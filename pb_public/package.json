@@ -1,0 +1,38 @@
+{
+  "name": "yarr-client",
+  "version": "1.0.0",
+  "description": "TypeScript, ES Modules, import map, import map polyfill, and babel",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RepComm/yarr.git"
+  },
+  "keywords": [
+    "typescript",
+    "esmodules",
+    "babel",
+    "template"
+  ],
+  "author": "Jonathan Crowder",
+  "license": "Unlicense",
+  "bugs": {
+    "url": "https://github.com/RepComm/yarr/issues"
+  },
+  "homepage": "https://github.com/RepComm/yarr#readme",
+  "devDependencies": {
+    "@babel/cli": "^7.13.16",
+    "@babel/core": "^7.14.0",
+    "@babel/plugin-transform-typescript": "^7.10.5",
+    "@babel/preset-env": "^7.14.1",
+    "typescript": "^4.7.4"
+  },
+  "scripts": {
+    "build": "babel src --extensions .ts --copy-files -d .",
+    "build-types": "npx tsc --project tsconfig.json",
+    "publish": "npm publish --access public"
+  },
+  "dependencies": {
+    "@roguecircuitry/htmless": "https://github.com/RogueCircuitry/htmless",
+    "pocketbase": "^0.8.0"
+  }
+}

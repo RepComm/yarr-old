@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    
+    <!--Polyfill for using import maps (in my case for firefox)-->
+    <script async src="./es-module-shims.js"></script>
+
+    <!--Map my own depednecy to its node_modules location, you can do this for other deps too!-->
+    <script type="importmap">
+    {
+      "imports": {
+        "@roguecircuitry/htmless": "./node_modules/@roguecircuitry/htmless/mod.js",
+        "three": "./node_modules/three/build/three.module.js",
+        "three/examples/jsm/loaders/GLTFLoader.js": "./node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+        "three/src/math/MathUtils.js": "./node_modules/three/src/math/MathUtils.js",
+        "@repcomm/gameinput-ts": "./node_modules/@repcomm/gameinput-ts/docs/mod.js",
+        "pocketbase": "./node_modules/pocketbase/dist/pocketbase.es.mjs"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>

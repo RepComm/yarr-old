@@ -1,0 +1,77 @@
+
+import PocketBase from "pocketbase";
+import { readFileJsonAsync } from "./utils.js";
+
+export interface DBState {
+  db?: PocketBase;
+  port: number;
+}
+
+export const dbState: DBState = {
+  port: 8090
+};
+
+interface PocketBaseAuth {
+  username: string;
+  password: string;
+}
+
+export async function db_init() {
+  dbState.db = new PocketBase(`http://127.0.0.1:${dbState.port}`);
+
+  let db = dbState.db;
+
+  let {username, password} = await readFileJsonAsync<PocketBaseAuth>("./pb.auth.json");
+
+  let auth = await db.admins.authWithPassword(username, password);
+
+  console.log("DataBase admin auth: ", db.authStore.isValid);
+
+}
+
+export async function db_user_exists (username: string) {
+  let db = dbState.db;
+
+  username = escape(username);
+
+  let result = await db.collection("users").getFirstListItem(`username="${username}"`);
+  
+  console.log(result);
+
+  return true;
+}
+
+export interface OptsCreateUser {
+  username: string;
+  password: string;
+  passwordConfirm: string;
+  name?: string;
+}
+
+export async function db_create_user (opts: OptsCreateUser) {
+  let db = dbState.db;
+
+  let {username, password, passwordConfirm, name} = opts;
+
+  try {
+    if (await db_user_exists(username)) return false;
+  } catch (ex) {
+    //this is fine, if the resource exists then we want to cancel the creation anyways
+  }
+  
+  let result: Record<any,any>;
+  try {
+    result = await db.collection("users").create({
+      username,
+      password,
+      passwordConfirm,
+      name,
+      verified: true
+    });
+  } catch (ex) {
+    console.warn(`Couldn't create user, but they don't already exist. Username: ${username}, isPasswordEmpty: ${password !== ""}, isPasswordConfirmEqual: ${password === passwordConfirm}`, ex);
+    return false;
+  }
+
+  return result;
+}

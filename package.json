@@ -1,11 +1,12 @@
 {
-  "name": "ts-map-babel-template",
+  "name": "yarr-server",
+  "type": "module",
   "version": "1.0.0",
-  "description": "TypeScript, ES Modules, import map, import map polyfill, and babel",
+  "description": "Yarr multiplayer game server",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RepComm/ts-map-babel-template.git"
+    "url": "git+https://github.com/RepComm/yarr.git"
   },
   "keywords": [
     "typescript",
@@ -16,22 +17,28 @@
   "author": "Jonathan Crowder",
   "license": "Unlicense",
   "bugs": {
-    "url": "https://github.com/RepComm/ts-map-babel-template/issues"
+    "url": "https://github.com/RepComm/yarr/issues"
   },
-  "homepage": "https://github.com/RepComm/ts-map-babel-template#readme",
+  "homepage": "https://github.com/RepComm/yarr#readme",
   "devDependencies": {
     "@babel/cli": "^7.13.16",
     "@babel/core": "^7.14.0",
     "@babel/plugin-transform-typescript": "^7.10.5",
     "@babel/preset-env": "^7.14.1",
-    "typescript": "^4.7.4"
+    "@types/http-proxy": "^1.17.9",
+    "@types/node": "^18.11.9",
+    "typescript": "^4.7.4",
+    "serve-handler": "^6.1.5"
+  },
+  "dependencies": {
+    "@types/serve-handler": "^6.1.1",
+    "http-proxy": "^1.18.1",
+    "pocketbase": "^0.8.0"
   },
   "scripts": {
     "build": "babel src --extensions .ts --copy-files -d .",
     "build-types": "npx tsc --project tsconfig.json",
-    "publish": "npm publish --access public"
-  },
-  "dependencies": {
-    "@roguecircuitry/htmless": "https://github.com/RogueCircuitry/htmless"
+    "db": "pocketbase serve",
+    "start": "node ."
   }
 }
