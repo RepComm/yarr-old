@@ -103,6 +103,8 @@ async function main () {
 
     } else {
       
+      //handling static serve with server-handler because pocketbase serves incorrect mime type for JS modules
+
       serveHandler(req, res, {
         directoryListing: false,
         rewrites: [

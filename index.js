@@ -77,6 +77,8 @@ async function main() {
       //everything else goes directly to pocketbase server (includes pb_public static folder)
       proxy.web(req, res);
     } else {
+      //handling static serve with server-handler because pocketbase serves incorrect mime type for JS modules
+
       serveHandler(req, res, {
         directoryListing: false,
         rewrites: [{

@@ -50,7 +50,8 @@ export function styles(ui) {
       maxWidth: "60%",
       marginLeft: "auto",
       borderRadius: "2em",
-      height: "2.5em"
+      height: "2.5em",
+      width: "100%"
     },
     ".prompt-opt-input": {
       textIndent: "1em"
