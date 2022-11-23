@@ -70,7 +70,6 @@ export function prompt(ui, opts) {
         switch (v.type) {
           case "number":
             value = Number.parseFloat(value);
-            console.log("num or sel", value);
             break;
           case "checkbox":
             value = value ? true : false;

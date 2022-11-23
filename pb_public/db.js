@@ -86,7 +86,6 @@ export async function get_room(name) {
 export async function join_room(room, penguin) {
   let db = dbState.db;
   let rooms = await list_rooms(penguin.id);
-  console.log("penguin", penguin.id, "in rooms", rooms);
   const promises = new Array();
 
   /**Remove from joined rooms*/

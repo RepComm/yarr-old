@@ -50,7 +50,6 @@ export class Penguin {
     let nextHex = hex;
     if (hex.charAt(0) == "#") nextHex = hex.substring(1);
     let colorInt = parseInt(nextHex, 16);
-    console.log(hex, nextHex, colorInt);
     this.color.setHex(colorInt);
   }
   constructor() {

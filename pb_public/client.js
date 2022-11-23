@@ -44,7 +44,8 @@ async function init_renderer() {
     alpha: false,
     antialias: true
   });
-  renderer.setPixelRatio(2);
+  // renderer.setPixelRatio(2);
+
   renderer.setClearColor("#477DEC");
 }
 async function init_scene() {
@@ -101,7 +102,6 @@ async function populate_room() {
   for (let occupant of toRemove) {
     removePenguin(occupant);
     if (occupant === state.localPenguin.id) continue;
-    console.log("unsub", occupant);
     dbState.db.collection("penguins").unsubscribe(occupant);
   }
 

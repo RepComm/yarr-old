@@ -36,8 +36,6 @@ export async function db_user_exists (username: string) {
 
   let result = await db.collection("users").getFirstListItem(`username="${username}"`);
   
-  console.log(result);
-
   return true;
 }
 
