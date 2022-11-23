@@ -1,134 +1,124 @@
 import { GameInput } from "@repcomm/gameinput-ts";
 import { DirectionalLight, PerspectiveCamera, Raycaster, Scene, Vector2, WebGLRenderer } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { DEG2RAD, lerp } from "three/src/math/MathUtils.js";
-import { convertToonMaterial, sceneGetAllMaterials } from "./utils.js";
-import { MsgHandler } from "./api.js";
+import { DEG2RAD } from "three/src/math/MathUtils.js";
 import { Anim } from "./anim.js";
+import { dbState, deafen_rooms, get_penguins, join_room, listen_room, list_rooms } from "./db.js";
 import { Debounce } from "./debounce.js";
 import { Penguin } from "./penguin.js";
 import { state } from "./state.js";
-import { findChildByName } from "./utils.js";
-let input = GameInput.get();
-input.addJsonConfig({
-  buttons: [{
-    id: "wave",
-    influences: [{
-      keys: ["w"]
+import { convertToonMaterial, findChildByName, sceneGetAllMaterials } from "./utils.js";
+export async function getNetworkTime() {
+  let result = 0;
+  try {
+    let resp = await fetch("/networktime");
+    let json = await resp.json();
+    result = json.now;
+  } catch (ex) {
+    console.warn("Failed to get /networktime", ex);
+  }
+  return result;
+}
+async function init_loaders() {
+  state.gltfLoader = new GLTFLoader();
+}
+async function init_input() {
+  let input = state.input = GameInput.get();
+  input.addJsonConfig({
+    buttons: [{
+      id: "wave",
+      influences: [{
+        keys: ["w"]
+      }]
     }]
-  }]
-});
-let loader = new GLTFLoader();
-export async function client_start(ui, container, penguinConfig) {
-  //create a canvas
-  let canvas = ui.create("canvas").id("canvas").mount(container).e;
-
-  //use three js webgl renderer on our canvas
-  let renderer = new WebGLRenderer({
-    canvas,
+  });
+}
+async function init_ui() {
+  let ui = state.ui;
+  let container = state.container;
+  state.canvas = ui.create("canvas").id("canvas").mount(container).e;
+}
+async function init_renderer() {
+  let renderer = state.renderer = new WebGLRenderer({
+    canvas: state.canvas,
     alpha: false,
     antialias: true
   });
   renderer.setClearColor("#477DEC");
-  let scene = new Scene();
-  let camera = new PerspectiveCamera(45, 1, 0.01, 200);
+}
+async function init_scene() {
+  let scene = state.scene = new Scene();
+  let camera = state.camera = new PerspectiveCamera(45, 1, 0.01, 200);
   camera.position.set(0, 20, 18);
   camera.rotateX(-45 * DEG2RAD);
-  scene.add(camera);
-  let penguins = new Map();
-  function removePenguin(id) {
-    let penguin = penguins.get(id);
-    if (!penguin) return;
+  state.scene.add(camera);
+}
+function removePenguin(id) {
+  let penguins = state.trackedPenguins;
+  let penguin = penguins.get(id);
+  if (!penguin) return;
 
-    //stop displaying
-    penguin.gltf.scene.removeFromParent();
+  //stop displaying
+  penguin.gltf.scene.removeFromParent();
 
-    //remove from tracking
-    penguins.delete(id);
+  //remove from tracking
+  penguins.delete(id);
+}
+function addPenguin(penguin) {
+  let penguins = state.trackedPenguins;
+  state.scene.add(penguin.gltf.scene);
+  penguins.set(penguin.id, penguin);
+}
+async function init_penguins() {
+  state.trackedPenguins = new Map();
+
+  //spawn our local penguin
+  state.localPenguin = await Penguin.create(state.selectedPenguin);
+  addPenguin(state.localPenguin);
+}
+async function populate_room() {
+  let toRemove = new Set();
+  let toAddIds = new Set();
+
+  //remove penguins
+  let currentRoomOccupants = new Set(state.currentRoom.occupants);
+  for (let [id, p] of state.trackedPenguins) {
+    if (!currentRoomOccupants.has(id)) toRemove.add(id);
   }
-  let localPenguin = await Penguin.create();
-  localPenguin.name = penguinConfig.name;
-  localPenguin.setColor(penguinConfig.color);
-  let spawnRadius = 1;
-  let msgHandler = new MsgHandler();
-  msgHandler.listen("player-init-resp", async (sender, json) => {
-    serverInitTime = json.data.now;
-    serverPredictedTime = serverInitTime;
-    // localPenguin.id = json.data.id;
+  for (let occupant of toRemove) {
+    removePenguin(occupant);
+    if (occupant === state.localPenguin.id) continue;
+    console.log("unsub", occupant);
+    dbState.db.collection("penguins").unsubscribe(occupant);
+  }
 
-    scene.add(localPenguin.gltf.scene);
-    penguins.set(localPenguin.id, localPenguin);
-    localPenguin.room = "town";
-    localPenguin.setTarget(lerp(-spawnRadius, spawnRadius, Math.random()), 0, lerp(-spawnRadius, spawnRadius, Math.random()));
-    ws.send(JSON.stringify(localPenguin.state)); //send player state to server for the first time
+  //add penguins
+  for (let occupant of state.currentRoom.occupants) {
+    if (!state.trackedPenguins.has(occupant)) {
+      toAddIds.add(occupant);
+    }
+  }
+  let toAddData = await get_penguins(toAddIds);
+  for (let occupant of toAddData) {
+    // if (occupant.id === state.localPenguin.id) continue;
 
-    //ask to be notified of room info
-    ws.send(JSON.stringify({
-      type: "query-room",
-      data: {
-        room: localPenguin.room,
-        id: localPenguin.id
+    let createdPenguin = await Penguin.create(occupant);
+    addPenguin(createdPenguin);
+    if (occupant.id === state.localPenguin.id) continue;
+    console.log("sub", occupant.id);
+    dbState.db.collection("penguins").subscribe(occupant.id, data => {
+      var _data$record;
+      console.log("sub update", occupant.id);
+      let state = data === null || data === void 0 ? void 0 : (_data$record = data.record) === null || _data$record === void 0 ? void 0 : _data$record.state;
+      if (state) {
+        createdPenguin.setTarget(state.x, state.y, state.z, state.rx, state.ry, state.rz);
       }
-    }));
-  });
-  async function handlePlayerState(sender, data, teleport = false) {
-    if (data.id === undefined) return;
-    let p = penguins.get(data.id);
-    if (!p) {
-      p = await Penguin.create();
-      p.setLocal(false);
-      if (data.color) p.setColor(data.color);
-      scene.add(p.gltf.scene);
-      p.id = data.id;
-      penguins.set(p.id, p);
-    }
-    p.setTarget(data.x, data.y, data.z, data.rx, data.ry, data.rz, teleport);
+    });
   }
-  msgHandler.listen("state", async (sender, json) => {
-    handlePlayerState(sender, json.data);
-  });
-  msgHandler.listen("query-room-resp", (sender, json) => {
-    let penguins = json.data.penguins;
-    for (let penguin of penguins) {
-      handlePlayerState(sender, penguin, true);
-    }
-  });
-  msgHandler.listen("room-change", (sender, json) => {
-    //if the player isn't in our room, we don't care
-    if (json.data.oldRoom !== localPenguin.room) return;
-
-    //if the player isn't in the same room as it as, stop showing it
-    if (json.data.nextRoom !== json.data.oldRoom) {
-      removePenguin(json.data.player);
-    }
-  });
-
-  //for some reason creating a web socket before awaiting Penguin.create() has issues
-  //I think the server manages to send data across before the listeners are attached
-  let ws = new WebSocket(`${state.ssl ? "wss" : "ws"}://${state.host}`);
-  ws.addEventListener("open", evt => {
-    console.log("connected");
-  });
-  ws.addEventListener("close", evt => {
-    console.log("disconnected");
-    alert(`Disconnected, reason: ${evt.reason}`);
-  });
-  ws.addEventListener("error", evt => {
-    console.warn("error", evt);
-  });
-  let serverInitTime = 0;
-  let serverPredictedTime = 0;
-  ws.addEventListener("message", evt => {
-    let json;
-    try {
-      json = JSON.parse(evt.data);
-    } catch (ex) {
-      return;
-    }
-    console.log(json);
-    msgHandler.process(ws, json);
-  });
-  let townModel = await loader.loadAsync("./models/town.gltf");
+}
+async function display_room() {
+  let scene = state.scene;
+  let townModel = await state.gltfLoader.loadAsync("./models/town.gltf");
   convertToonMaterial(townModel.scene, (mesh, oldMat) => {
     if (oldMat.name === "light-cone") return false;
     return true;
@@ -137,9 +127,9 @@ export async function client_start(ui, container, penguinConfig) {
   materials.get("light-cone").emissiveIntensity = 24;
   let invisMat = materials.get("invisible");
   if (invisMat) invisMat.visible = false;
-  let groundClickable = findChildByName(townModel.scene, "ground-clickable");
-  let roomAnim = Anim.fromGLTF(townModel);
-  roomAnim.play();
+  state.groundClickable = findChildByName(townModel.scene, "ground-clickable");
+  let currentRoomAnim = state.currentRoomAnim = Anim.fromGLTF(townModel);
+  currentRoomAnim.play();
   scene.add(townModel.scene);
   let sun = new DirectionalLight(0xffffff, 1.8);
   sun.target = scene;
@@ -148,23 +138,61 @@ export async function client_start(ui, container, penguinConfig) {
   sun.position.set(41, 1, 10);
 
   // window["sun"] = sun;
+}
 
+async function switch_room(room) {
+  await deafen_rooms();
+  state.currentRoom = room;
+  await listen_room(room, data => {
+    Object.assign(state.currentRoom, data.record);
+    populate_room();
+  });
+  join_room(room, state.selectedPenguin);
+  await display_room();
+}
+async function init_room() {
+  let rooms = await list_rooms();
+  let randomRoomIndex = 0; //Math.floor((Math.random() * rooms.length * 10) % rooms.length);
+  let randomRoom = rooms[randomRoomIndex];
+  console.log(rooms, randomRoomIndex, randomRoom);
+  switch_room(randomRoom);
+}
+async function init_time() {
+  state.serverInitTime = await getNetworkTime();
+  state.serverPredictedTime = state.serverInitTime;
+}
+async function render_loop() {
+  const {
+    ui,
+    canvas,
+    localPenguin,
+    renderer,
+    scene,
+    camera,
+    input
+  } = state;
   const raycaster = new Raycaster();
   let screenspaceTarget = new Vector2();
   ui.ref(canvas).on("click", evt => {
+    if (!state.groundClickable) {
+      console.warn("state.groundClickable is falsy! cannot click");
+      return;
+    }
     screenspaceTarget.set(evt.clientX / canvas.width * 2 - 1, (canvas.height - evt.clientY) / canvas.height * 2 - 1);
     raycaster.setFromCamera(screenspaceTarget, camera);
-    const intersects = raycaster.intersectObject(groundClickable);
+    const intersects = raycaster.intersectObject(state.groundClickable);
     if (!intersects || intersects.length < 1) return;
     const intersect = intersects[0];
-    localPenguin.setTarget(intersect.point.x, intersect.point.y, intersect.point.z);
     localPenguin.gltf.scene.lookAt(intersect.point);
+    localPenguin.setTarget(intersect.point.x, intersect.point.y, intersect.point.z);
 
-    //networking update, why send the actual coords when we're going to lerp anyways
-    ws.send(JSON.stringify(localPenguin.state));
+    //update database
+    dbState.db.collection("penguins").update(localPenguin.id, {
+      state: localPenguin.state
+    });
   });
   let resize = () => {
-    ui.ref(canvas);
+    state.ui.ref(state.canvas);
     let r = ui.getRect();
     if (r.width > window.innerWidth) r.width = window.innerWidth;
     renderer.setSize(r.width, r.height, false);
@@ -172,7 +200,7 @@ export async function client_start(ui, container, penguinConfig) {
     camera.updateProjectionMatrix();
   };
   setTimeout(resize, 500);
-  ui.ref(window).on("resize", resize);
+  state.ui.ref(window).on("resize", resize);
   let timeLast = undefined;
   let timeDelta = 0;
   let timeDeltaS = 0;
@@ -182,18 +210,31 @@ export async function client_start(ui, container, penguinConfig) {
     timeDelta = timeNow - timeLast;
     timeLast = timeNow;
     timeDeltaS = timeDelta / 1000;
-    serverPredictedTime += timeDelta;
+    state.serverPredictedTime += timeDelta;
 
     //schedule the next frame immediately to take advantage of event loop
     requestAnimationFrame(render);
     if (input.getButtonValue("wave") && genericDebounce.update()) {
       localPenguin.wave();
     }
-    for (let [id, p] of penguins) {
-      p.update(timeDeltaS, serverPredictedTime);
+    for (let [id, p] of state.trackedPenguins) {
+      p.update(timeDeltaS, state.serverPredictedTime);
     }
     renderer.render(scene, camera);
-    roomAnim.mixer.setTime(serverPredictedTime / 1000);
+    if (state.currentRoomAnim) {
+      state.currentRoomAnim.mixer.setTime(state.serverPredictedTime / 1000);
+    }
   };
   requestAnimationFrame(render);
+}
+export async function client_start() {
+  await init_input();
+  await init_loaders();
+  await init_ui();
+  await init_time();
+  await init_renderer();
+  await init_scene();
+  await init_penguins();
+  await init_room();
+  render_loop();
 }

@@ -1,3 +1,8 @@
+export let LoginMethod;
+(function (LoginMethod) {
+  LoginMethod[LoginMethod["LOGIN"] = 0] = "LOGIN";
+  LoginMethod[LoginMethod["REGISTER"] = 1] = "REGISTER";
+})(LoginMethod || (LoginMethod = {}));
 export const state = {
   host: window.location.host,
   ssl: window.location.protocol.startsWith("https"),

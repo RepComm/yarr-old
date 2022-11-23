@@ -1,7 +1,7 @@
 import { Vector3 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { convertToonMaterial, findChildByName, sceneGetAllMaterials } from "./utils.js";
 import { Anim } from "./anim.js";
+import { convertToonMaterial, findChildByName, sceneGetAllMaterials } from "./utils.js";
 let loader = new GLTFLoader();
 export class Penguin {
   static getGltf() {
@@ -15,20 +15,20 @@ export class Penguin {
       return;
     });
   }
-  static create() {
-    return new Promise(async function (_resolve, _reject) {
-      let result = new Penguin();
-      result.gltf = await Penguin.getGltf();
-      convertToonMaterial(result.gltf.scene);
-      result.anim = Anim.fromGLTF(result.gltf);
-      result.anim.getAction("wave").timeScale = 4;
-      result.anim.getAction("waddle").timeScale = 4;
-      let materials = sceneGetAllMaterials(result.gltf.scene);
-      result.penguinColorMaterial = materials.get("penguin-color");
-      // console.log(result.penguinColorMaterial);
-
-      _resolve(result);
-    });
+  static async create(dbp) {
+    let result = new Penguin();
+    result.gltf = await Penguin.getGltf();
+    convertToonMaterial(result.gltf.scene);
+    result.anim = Anim.fromGLTF(result.gltf);
+    result.anim.getAction("wave").timeScale = 4;
+    result.anim.getAction("waddle").timeScale = 4;
+    let materials = sceneGetAllMaterials(result.gltf.scene);
+    result.penguinColorMaterial = materials.get("penguin-color");
+    result.setColorHex(dbp.color);
+    result.name = dbp.name;
+    result.id = dbp.id;
+    result.setState(dbp.state);
+    return result;
   }
   get rotation() {
     return this.gltf.scene.rotation;
@@ -40,18 +40,12 @@ export class Penguin {
     findChildByName(this.gltf.scene, "local").visible = local;
     return this;
   }
-  getColor() {
-    let result = {
-      r: 0,
-      g: 0,
-      b: 0
-    };
-    this.penguinColorMaterial.color.getRGB(result);
-    return result;
+  get color() {
+    return this.penguinColorMaterial.color;
   }
-  setColor(c) {
-    this.penguinColorMaterial.color.setRGB(c.r, c.g, c.b);
-    return this;
+  setColorHex(hex) {
+    if (hex.charAt(0) == "#") hex = hex.substring(1);
+    this.color.setHex(parseInt(hex));
   }
   constructor() {
     this.target = new Vector3();
@@ -89,19 +83,13 @@ export class Penguin {
   }
   get state() {
     return {
-      type: "state",
-      data: {
-        id: this.id,
-        x: this.target.x,
-        y: this.target.y,
-        z: this.target.z,
-        rx: this.rotation.x,
-        ry: this.rotation.y,
-        rz: this.rotation.z,
-        name: this.name,
-        room: this.room,
-        color: this.getColor()
-      }
+      x: this.target.x,
+      y: this.target.y,
+      z: this.target.z,
+      rx: this.rotation.x,
+      ry: this.rotation.y,
+      rz: this.rotation.z
     };
   }
+  setState(state) {}
 }

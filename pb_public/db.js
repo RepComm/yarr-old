@@ -54,6 +54,13 @@ export async function list_penguins() {
   }
   return result;
 }
+export async function get_penguins(ids) {
+  let promises = new Array();
+  for (let id of ids) {
+    promises.push(dbState.db.collection("penguins").getOne(id));
+  }
+  return await Promise.all(promises);
+}
 export async function create_penguin(opts) {
   let db = dbState.db;
   opts.owner = db.authStore.model.id;

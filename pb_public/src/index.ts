@@ -113,7 +113,8 @@ async function auth_loop() {
 }
 
 async function try_register() {
-  
+  state.authConfig.success = false;
+
   let register = await promptAsync<AuthConfig>(state.ui, {
     title: "Register",
     config: [{
@@ -149,6 +150,7 @@ async function try_register() {
 }
 
 async function try_method() {
+  state.authConfig.success = false;
   let method = await promptAsync<AuthConfig>(state.ui, {
     title: "Welcome to Yarr! - Authenticate",
     config: [{
@@ -171,9 +173,11 @@ async function try_method() {
     cb: undefined
   });
   Object.assign(state.authConfig, method);
+  state.authConfig.success = true;
 }
 
 async function try_login() {
+  state.authConfig.success = false;
   let result = await authenticate(state.authConfig);
 
   state.authResponse = result as RecordAuthResponse<DBUser>;

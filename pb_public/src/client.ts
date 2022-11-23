@@ -4,7 +4,7 @@ import { DirectionalLight, MeshStandardMaterial, PerspectiveCamera, Raycaster, S
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DEG2RAD, lerp } from "three/src/math/MathUtils.js";
 import { Anim } from "./anim.js";
-import { DBPenguin, DBRoom, dbState, deafen_rooms, get_penguins, join_room, listen_room, list_rooms, RelationId } from "./db.js";
+import { DBPenguin, DBRoom, dbState, deafen_rooms, get_penguins, join_room, listen_room, list_rooms, PenguinState, RelationId } from "./db.js";
 import { Debounce } from "./debounce.js";
 import { Penguin } from "./penguin.js";
 import { state } from "./state.js";
@@ -28,7 +28,7 @@ async function init_loaders () {
 }
 
 async function init_input () {
-  let input = GameInput.get();
+  let input = state.input = GameInput.get();
   
   input.addJsonConfig({
     buttons: [{
@@ -101,10 +101,15 @@ async function populate_room () {
   //remove penguins
   let currentRoomOccupants = new Set(state.currentRoom.occupants);
   for (let [id, p] of state.trackedPenguins) {
+    
     if (!currentRoomOccupants.has(id)) toRemove.add(id);
   }
   for (let occupant of toRemove) {
     removePenguin(occupant);
+    if (occupant === state.localPenguin.id) continue;
+
+    console.log("unsub", occupant);
+    dbState.db.collection("penguins").unsubscribe(occupant);    
   }
   
   //add penguins
@@ -116,9 +121,31 @@ async function populate_room () {
 
   let toAddData = await get_penguins(toAddIds);
   for (let occupant of toAddData) {
+    // if (occupant.id === state.localPenguin.id) continue;
+
     let createdPenguin = await Penguin.create(occupant);
 
     addPenguin(createdPenguin);
+
+    if (occupant.id === state.localPenguin.id) continue;
+
+    console.log("sub", occupant.id);
+    dbState.db.collection("penguins").subscribe<DBPenguin>(occupant.id, (data)=>{
+      console.log("sub update", occupant.id);
+      let state: PenguinState|undefined = data?.record?.state;
+
+      if (state) {
+        createdPenguin.setTarget(
+          state.x,
+          state.y,
+          state.z,
+          state.rx,
+          state.ry,
+          state.rz,
+        );
+      }
+
+    });
   }
 
 }
@@ -171,8 +198,10 @@ async function switch_room(room: DBRoom) {
 
 async function init_room() {
   let rooms = await list_rooms();
-  let randomRoomIndex = (Math.random() * rooms.length * 10) % rooms.length;
+  let randomRoomIndex = 0; //Math.floor((Math.random() * rooms.length * 10) % rooms.length);
   let randomRoom = rooms[randomRoomIndex];
+
+  console.log(rooms, randomRoomIndex, randomRoom);
 
   switch_room(randomRoom);
 }
@@ -208,6 +237,11 @@ async function render_loop () {
     localPenguin.setTarget(
       intersect.point.x, intersect.point.y, intersect.point.z
     );
+    
+    //update database
+    dbState.db.collection("penguins").update<DBPenguin>(localPenguin.id, {
+      state: localPenguin.state
+    });
 
   });
 
