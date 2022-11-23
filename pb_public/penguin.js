@@ -18,7 +18,10 @@ export class Penguin {
   static async create(dbp) {
     let result = new Penguin();
     result.gltf = await Penguin.getGltf();
-    convertToonMaterial(result.gltf.scene);
+    convertToonMaterial(result.gltf.scene, (mesh, oldMaterial) => {
+      if (oldMaterial.name == "local") return false;
+      return true;
+    });
     result.anim = Anim.fromGLTF(result.gltf);
     result.anim.getAction("wave").timeScale = 4;
     result.anim.getAction("waddle").timeScale = 4;
@@ -44,8 +47,11 @@ export class Penguin {
     return this.penguinColorMaterial.color;
   }
   setColorHex(hex) {
-    if (hex.charAt(0) == "#") hex = hex.substring(1);
-    this.color.setHex(parseInt(hex));
+    let nextHex = hex;
+    if (hex.charAt(0) == "#") nextHex = hex.substring(1);
+    let colorInt = parseInt(nextHex, 16);
+    console.log(hex, nextHex, colorInt);
+    this.color.setHex(colorInt);
   }
   constructor() {
     this.target = new Vector3();

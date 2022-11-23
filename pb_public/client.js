@@ -44,6 +44,7 @@ async function init_renderer() {
     alpha: false,
     antialias: true
   });
+  renderer.setPixelRatio(2);
   renderer.setClearColor("#477DEC");
 }
 async function init_scene() {
@@ -76,6 +77,17 @@ async function init_penguins() {
   state.localPenguin = await Penguin.create(state.selectedPenguin);
   addPenguin(state.localPenguin);
 }
+const update_penguin = async (penguin, data, teleport = false) => {
+  // console.log("sub update", occupant.id);
+  let color = data === null || data === void 0 ? void 0 : data.color;
+  let state = data === null || data === void 0 ? void 0 : data.state;
+  if (state) {
+    penguin.setTarget(state.x, state.y, state.z, state.rx, state.ry, state.rz, teleport);
+  }
+  if (color) {
+    penguin.setColorHex(color);
+  }
+};
 async function populate_room() {
   let toRemove = new Set();
   let toAddIds = new Set();
@@ -107,15 +119,8 @@ async function populate_room() {
     let createdPenguin = await Penguin.create(occupant);
     createdPenguin.setLocal(false);
     addPenguin(createdPenguin);
-    console.log("sub", occupant.id);
-    dbState.db.collection("penguins").subscribe(occupant.id, data => {
-      var _data$record;
-      console.log("sub update", occupant.id);
-      let state = data === null || data === void 0 ? void 0 : (_data$record = data.record) === null || _data$record === void 0 ? void 0 : _data$record.state;
-      if (state) {
-        createdPenguin.setTarget(state.x, state.y, state.z, state.rx, state.ry, state.rz);
-      }
-    });
+    dbState.db.collection("penguins").subscribe(occupant.id, data => update_penguin(createdPenguin, data.record));
+    update_penguin(createdPenguin, await dbState.db.collection("penguins").getOne(occupant.id), true);
   }
 }
 async function display_room() {
@@ -156,7 +161,6 @@ async function init_room() {
   let rooms = await list_rooms();
   let randomRoomIndex = 0; //Math.floor((Math.random() * rooms.length * 10) % rooms.length);
   let randomRoom = rooms[randomRoomIndex];
-  console.log(rooms, randomRoomIndex, randomRoom);
   switch_room(randomRoom);
 }
 async function init_time() {
@@ -180,18 +184,19 @@ async function render_loop() {
       console.warn("state.groundClickable is falsy! cannot click");
       return;
     }
-    screenspaceTarget.set(evt.clientX / canvas.width * 2 - 1, (canvas.height - evt.clientY) / canvas.height * 2 - 1);
+    let r = ui.getRect();
+    screenspaceTarget.set(evt.clientX / r.width * 2 - 1, (r.height - evt.clientY) / r.height * 2 - 1);
     raycaster.setFromCamera(screenspaceTarget, camera);
     const intersects = raycaster.intersectObject(state.groundClickable);
     if (!intersects || intersects.length < 1) return;
     const intersect = intersects[0];
     localPenguin.gltf.scene.lookAt(intersect.point);
     localPenguin.setTarget(intersect.point.x, intersect.point.y, intersect.point.z);
-    console.log(localPenguin.id, localPenguin.state);
 
     //update database
     dbState.db.collection("penguins").update(localPenguin.id, {
-      state: localPenguin.state
+      state: localPenguin.state,
+      color: localPenguin.color.getHexString()
     }).catch(reason => {
       console.log(JSON.stringify(reason));
     });

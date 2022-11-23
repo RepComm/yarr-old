@@ -53,6 +53,7 @@ async function init_renderer () {
     alpha: false,
     antialias: true
   });
+  // renderer.setPixelRatio(2);
 
   renderer.setClearColor("#477DEC");
 }
@@ -94,6 +95,27 @@ async function init_penguins () {
   addPenguin(state.localPenguin);
 }
 
+const update_penguin = async (penguin: Penguin, data: DBPenguin, teleport: boolean = false)=> {
+  // console.log("sub update", occupant.id);
+  let color: string|undefined = data?.color;
+  let state: PenguinState|undefined = data?.state;
+
+  if (state) {
+    penguin.setTarget(
+      state.x,
+      state.y,
+      state.z,
+      state.rx,
+      state.ry,
+      state.rz,
+      teleport
+    );
+  }
+  if (color) {
+    penguin.setColorHex(color);
+  }
+}
+
 async function populate_room () {
   let toRemove = new Set<string>();
   let toAddIds = new Set<string>();
@@ -110,7 +132,6 @@ async function populate_room () {
     removePenguin(occupant);
     if (occupant === state.localPenguin.id) continue;
 
-    console.log("unsub", occupant);
     dbState.db.collection("penguins").unsubscribe(occupant);    
   }
   
@@ -132,23 +153,9 @@ async function populate_room () {
     
     addPenguin(createdPenguin);
 
-    console.log("sub", occupant.id);
-    dbState.db.collection("penguins").subscribe<DBPenguin>(occupant.id, (data)=>{
-      console.log("sub update", occupant.id);
-      let state: PenguinState|undefined = data?.record?.state;
-
-      if (state) {
-        createdPenguin.setTarget(
-          state.x,
-          state.y,
-          state.z,
-          state.rx,
-          state.ry,
-          state.rz,
-        );
-      }
-
-    });
+    dbState.db.collection("penguins").subscribe<DBPenguin>(occupant.id, (data)=>update_penguin(createdPenguin, data.record));
+    
+    update_penguin(createdPenguin, await dbState.db.collection("penguins").getOne<DBPenguin>(occupant.id), true);
   }
 
 }
@@ -204,8 +211,6 @@ async function init_room() {
   let randomRoomIndex = 0; //Math.floor((Math.random() * rooms.length * 10) % rooms.length);
   let randomRoom = rooms[randomRoomIndex];
 
-  console.log(rooms, randomRoomIndex, randomRoom);
-
   switch_room(randomRoom);
 }
 
@@ -226,8 +231,13 @@ async function render_loop () {
       console.warn("state.groundClickable is falsy! cannot click");
       return;
     }
+    let r = ui.getRect();
+    
+    screenspaceTarget.set(
+      (evt.clientX / r.width) * 2 - 1,
+      ((r.height - evt.clientY) / r.height) * 2 - 1
+    );
 
-    screenspaceTarget.set((evt.clientX / canvas.width) * 2 - 1, ((canvas.height - evt.clientY) / canvas.height) * 2 - 1);
     raycaster.setFromCamera(screenspaceTarget, camera);
 
     const intersects = raycaster.intersectObject(state.groundClickable);
@@ -241,12 +251,10 @@ async function render_loop () {
       intersect.point.x, intersect.point.y, intersect.point.z
     );
     
-    console.log(localPenguin.id, localPenguin.state);
-
-    
-      //update database
+    //update database
     dbState.db.collection("penguins").update<DBPenguin>(localPenguin.id, {
-      state: localPenguin.state
+      state: localPenguin.state,
+      color: localPenguin.color.getHexString()
     }).catch((reason)=>{
       console.log(JSON.stringify(reason));
     });

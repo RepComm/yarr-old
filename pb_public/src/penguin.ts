@@ -27,7 +27,10 @@ export class Penguin {
 
     result.gltf = await Penguin.getGltf();
 
-    convertToonMaterial(result.gltf.scene);
+    convertToonMaterial(result.gltf.scene, (mesh, oldMaterial)=>{
+      if (oldMaterial.name == "local") return false;
+      return true;
+    });
 
     result.anim = Anim.fromGLTF(result.gltf);
     result.anim.getAction("wave").timeScale = 4;
@@ -74,8 +77,11 @@ export class Penguin {
     return this.penguinColorMaterial.color;
   }
   setColorHex (hex: string) {
-    if (hex.charAt(0) == "#") hex = hex.substring(1);
-    this.color.setHex(parseInt(hex));
+    let nextHex = hex;
+    if (hex.charAt(0) == "#") nextHex = hex.substring(1);
+    let colorInt = parseInt(nextHex, 16);
+    
+    this.color.setHex(colorInt);
   }
 
   constructor () {

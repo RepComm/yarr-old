@@ -5,6 +5,10 @@ export function styles(ui) {
       color: "white",
       fontFamily: "Arial, Helvetica, sans-serif"
     },
+    "#canvas": {
+      width: "100%",
+      height: "100%"
+    },
     ".prompt": {
       backgroundImage: "url(./textures/blue.svg)",
       backgroundSize: "100%",

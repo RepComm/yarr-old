@@ -165,7 +165,6 @@ export async function join_room (room: DBRoom, penguin: DBPenguin) {
   let db = dbState.db;
 
   let rooms = await list_rooms(penguin.id);
-  console.log("penguin", penguin.id, "in rooms", rooms);
 
   const promises = new Array();
 

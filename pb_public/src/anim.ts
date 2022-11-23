@@ -45,8 +45,6 @@ export class Anim {
 
     let clip = this.getClip(name);
 
-    console.log("wave", clip.duration, action.timeScale, clip.duration / action.timeScale);
-
     setTimeout(()=>{
       action.stop();
     }, (clip.duration * 1000) / action.timeScale );

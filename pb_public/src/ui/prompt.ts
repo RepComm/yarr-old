@@ -116,7 +116,6 @@ export function prompt<T> (ui: UIBuilder, opts: prompt_options<T>) {
         switch (v.type) {
           case "number":
             value = Number.parseFloat(value);
-            console.log("num or sel", value);
             break;
           case "checkbox":
             value = value ? true : false;
