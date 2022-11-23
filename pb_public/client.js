@@ -83,6 +83,7 @@ async function populate_room() {
   //remove penguins
   let currentRoomOccupants = new Set(state.currentRoom.occupants);
   for (let [id, p] of state.trackedPenguins) {
+    if (id === state.localPenguin.id) continue;
     if (!currentRoomOccupants.has(id)) toRemove.add(id);
   }
   for (let occupant of toRemove) {
@@ -95,6 +96,7 @@ async function populate_room() {
   //add penguins
   for (let occupant of state.currentRoom.occupants) {
     if (!state.trackedPenguins.has(occupant)) {
+      if (occupant === state.localPenguin.id) continue;
       toAddIds.add(occupant);
     }
   }
@@ -103,8 +105,8 @@ async function populate_room() {
     // if (occupant.id === state.localPenguin.id) continue;
 
     let createdPenguin = await Penguin.create(occupant);
+    createdPenguin.setLocal(false);
     addPenguin(createdPenguin);
-    if (occupant.id === state.localPenguin.id) continue;
     console.log("sub", occupant.id);
     dbState.db.collection("penguins").subscribe(occupant.id, data => {
       var _data$record;
@@ -173,7 +175,7 @@ async function render_loop() {
   } = state;
   const raycaster = new Raycaster();
   let screenspaceTarget = new Vector2();
-  ui.ref(canvas).on("click", evt => {
+  ui.ref(canvas).on("click", async evt => {
     if (!state.groundClickable) {
       console.warn("state.groundClickable is falsy! cannot click");
       return;
@@ -185,10 +187,13 @@ async function render_loop() {
     const intersect = intersects[0];
     localPenguin.gltf.scene.lookAt(intersect.point);
     localPenguin.setTarget(intersect.point.x, intersect.point.y, intersect.point.z);
+    console.log(localPenguin.id, localPenguin.state);
 
     //update database
     dbState.db.collection("penguins").update(localPenguin.id, {
       state: localPenguin.state
+    }).catch(reason => {
+      console.log(JSON.stringify(reason));
     });
   });
   let resize = () => {

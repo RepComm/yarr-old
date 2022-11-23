@@ -101,10 +101,12 @@ async function populate_room () {
   //remove penguins
   let currentRoomOccupants = new Set(state.currentRoom.occupants);
   for (let [id, p] of state.trackedPenguins) {
-    
+    if (id === state.localPenguin.id) continue;
+
     if (!currentRoomOccupants.has(id)) toRemove.add(id);
   }
   for (let occupant of toRemove) {
+    
     removePenguin(occupant);
     if (occupant === state.localPenguin.id) continue;
 
@@ -115,6 +117,8 @@ async function populate_room () {
   //add penguins
   for (let occupant of state.currentRoom.occupants) {
     if (!state.trackedPenguins.has(occupant)) {
+      if (occupant === state.localPenguin.id) continue;
+
       toAddIds.add(occupant);
     }
   }
@@ -124,10 +128,9 @@ async function populate_room () {
     // if (occupant.id === state.localPenguin.id) continue;
 
     let createdPenguin = await Penguin.create(occupant);
-
+    createdPenguin.setLocal(false);
+    
     addPenguin(createdPenguin);
-
-    if (occupant.id === state.localPenguin.id) continue;
 
     console.log("sub", occupant.id);
     dbState.db.collection("penguins").subscribe<DBPenguin>(occupant.id, (data)=>{
@@ -218,7 +221,7 @@ async function render_loop () {
 
   let screenspaceTarget = new Vector2();
 
-  ui.ref(canvas).on("click", (evt) => {
+  ui.ref(canvas).on("click", async (evt) => {
     if (!state.groundClickable) {
       console.warn("state.groundClickable is falsy! cannot click");
       return;
@@ -238,11 +241,16 @@ async function render_loop () {
       intersect.point.x, intersect.point.y, intersect.point.z
     );
     
-    //update database
+    console.log(localPenguin.id, localPenguin.state);
+
+    
+      //update database
     dbState.db.collection("penguins").update<DBPenguin>(localPenguin.id, {
       state: localPenguin.state
+    }).catch((reason)=>{
+      console.log(JSON.stringify(reason));
     });
-
+    
   });
 
   let resize = () => {
@@ -278,6 +286,7 @@ async function render_loop () {
     }
 
     for (let [id, p] of state.trackedPenguins) {
+      
       p.update(timeDeltaS, state.serverPredictedTime);
     }
 

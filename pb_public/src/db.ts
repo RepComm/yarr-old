@@ -100,22 +100,7 @@ export interface DBPenguin extends CollectionItem {
   owner?: RelationId<DBUser>;
 }
 
-export async function list_penguins () {
-  let db = dbState.db;
-
-  let result: Array<DBPenguin>;
-  try {
-    //only allowed to retrieve where @request.auth.id = owner.id by database side
-    result = await db.collection("penguins").getFullList<DBPenguin>(10, {
-      // filter: "@request.auth.id = owner.id"
-    });
-  } catch (ex) {
-    return ex as string;
-  }
-
-  return result;
-}
-
+/**Get a list of penguins by their ID*/
 export async function get_penguins (ids: Set<string>) {
   let promises = new Array<Promise<DBPenguin>>();
 
@@ -124,6 +109,13 @@ export async function get_penguins (ids: Set<string>) {
   }
 
   return await Promise.all(promises);
+}
+
+/**Get a list of the current logged in user's penguins*/
+export async function get_own_penguins () {
+  return await dbState.db.collection("penguins").getFullList<DBPenguin>(10, {
+    filter: `owner.id="${dbState.db.authStore.model.id}"`
+  });
 }
 
 export async function create_penguin (opts: DBPenguin) {

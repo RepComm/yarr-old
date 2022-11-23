@@ -1,12 +1,12 @@
 import { exponent, UIBuilder } from "@roguecircuitry/htmless";
 import { client_start } from "./client.js";
-import { authenticate, create_penguin, create_user, db_init, list_penguins } from "./db.js";
+import { authenticate, create_penguin, create_user, db_init, get_own_penguins } from "./db.js";
 import { LoginMethod, state } from "./state.js";
 import { styles } from "./styles.js";
 import { promptAsync } from "./ui/prompt.js";
 async function pick_penguin() {
   let ui = state.ui;
-  let penguins = await list_penguins();
+  let penguins = await get_own_penguins();
   let penguinNames = new Array();
   for (let penguin of penguins) {
     penguinNames.push(penguin.name);

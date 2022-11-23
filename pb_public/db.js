@@ -41,25 +41,20 @@ export async function create_user(opts) {
   }
   return json;
 }
-export async function list_penguins() {
-  let db = dbState.db;
-  let result;
-  try {
-    //only allowed to retrieve where @request.auth.id = owner.id by database side
-    result = await db.collection("penguins").getFullList(10, {
-      // filter: "@request.auth.id = owner.id"
-    });
-  } catch (ex) {
-    return ex;
-  }
-  return result;
-}
+/**Get a list of penguins by their ID*/
 export async function get_penguins(ids) {
   let promises = new Array();
   for (let id of ids) {
     promises.push(dbState.db.collection("penguins").getOne(id));
   }
   return await Promise.all(promises);
+}
+
+/**Get a list of the current logged in user's penguins*/
+export async function get_own_penguins() {
+  return await dbState.db.collection("penguins").getFullList(10, {
+    filter: `owner.id="${dbState.db.authStore.model.id}"`
+  });
 }
 export async function create_penguin(opts) {
   let db = dbState.db;
