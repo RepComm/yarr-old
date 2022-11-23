@@ -1,35 +1,17 @@
 
-import { UIBuilder, exponent } from "@roguecircuitry/htmless";
+import { exponent, UIBuilder } from "@roguecircuitry/htmless";
 import { RecordAuthResponse } from "pocketbase";
-import { authenticate, create_penguin, create_user, DBPenguin, DBUser, db_init, deafen_rooms, get_room, join_room, listen_room, list_penguins, list_rooms } from "./db.js";
-import {styles} from "./styles.js";
-import { prompt, promptAsync } from "./ui/prompt.js";
-
-export enum LoginMethod {
-  LOGIN,
-  REGISTER
-}
-
-export interface AuthConfig {
-  method: LoginMethod;
-  username: string;
-  password: string;
-  passwordConfirm: string;
-  name: string;
-}
+import { client_start } from "./client.js";
+import { authenticate, create_penguin, create_user, DBPenguin, DBUser, db_init, deafen_rooms, get_room, join_room, listen_room, list_penguins } from "./db.js";
+import { AuthConfig, LoginMethod, state } from "./state.js";
+import { styles } from "./styles.js";
+import { promptAsync } from "./ui/prompt.js";
 
 export interface PenguinSelection {
   index: number;
 }
 
-export interface State {
-  ui?: UIBuilder;
-}
-export const state: State = {
-
-};
-
-async function pickPenguin () {
+async function pick_penguin() {
   let ui = state.ui;
   let penguins = await list_penguins() as Array<DBPenguin>;
 
@@ -52,10 +34,10 @@ async function pickPenguin () {
     }]
   });
 
-  let selectedPenguin: DBPenguin;
+  state.selectedPenguin = undefined;
 
-  console.log("Selected penguin", selection);
-  if (selection.index === penguinNames.length-1) {
+  // console.log("Selected penguin", selection);
+  if (selection.index === penguinNames.length - 1) {
 
     let creation = await promptAsync<DBPenguin>(ui, {
       cb: undefined,
@@ -65,7 +47,7 @@ async function pickPenguin () {
         default: "",
         type: "string",
         label: "Penguin Name"
-      },{
+      }, {
         key: "color",
         default: "#ff00ff",
         type: "color",
@@ -75,54 +57,98 @@ async function pickPenguin () {
 
     let result = await create_penguin(creation) as DBPenguin;
 
-    console.log("DB created penguin", result);
+    alert(`Successfully created penguin ${result.name}!`);
+    // console.log("DB created penguin", result);
 
-    selectedPenguin = result;
+    state.selectedPenguin = result;
   } else {
-    selectedPenguin = penguins[selection.index];
+    state.selectedPenguin = penguins[selection.index];
+    alert(`Selected penguin ${state.selectedPenguin.name}`);
   }
-
-  // let rooms = await list_rooms();
-
-  await deafen_rooms();
-  
-  let room = await get_room("town");
-  await listen_room(room, (data)=>{
-    console.log("current room changed", selectedPenguin, data);
-  });
-
-  join_room(room, selectedPenguin);
 
 }
 
-async function init_ui() {
+async function ui_init() {
   state.ui = new UIBuilder();
 
   let ui = state.ui;
 
   //make everything use flex box
   ui.default(exponent);
-  
+
   //custom styles for this page
   styles(ui); ui.mount(document.head);
-  
+
   //create a container for everything
   ui.create("div").id("container").mount(document.body);
-  let container = ui.e as HTMLDivElement;
+  state.container = ui.e as HTMLDivElement;
 }
 
-async function auth_loop () {
+async function auth_loop() {
   let ui = state.ui;
 
+  state.authConfig = {} as any;
 
+  while (!state.authConfig.success) {
+    await try_method();
+
+    //if cancel was pressed, just try again..
+    if (!state.authConfig.success) continue;
+    
+    //otherwise try to use whatever login method they chose
+    if (state.authConfig.method === LoginMethod.LOGIN) {
+      await try_login();
+    } else {
+      await try_register();
+    }
+  
+    if (state.authConfig.success) {
+      break;
+    } else {
+      alert(`Did not login successfully..`);
+      continue;
+    }
+
+  }
 }
 
-async function main () {
+async function try_register() {
   
-  await init_ui();
+  let register = await promptAsync<AuthConfig>(state.ui, {
+    title: "Register",
+    config: [{
+      key: "username",
+      default: state.authConfig.username,
+      type: "string",
+      label: "Username"
+    }, {
+      key: "password",
+      default: state.authConfig.password,
+      type: "password",
+      label: "Password"
+    }, {
+      key: "passwordConfirm",
+      default: "",
+      type: "password",
+      label: "Confirm Password"
+    }],
+    cb: undefined
+  });
 
-  await db_init();
+  let result = await create_user(register);
 
+  if (!result || (result as any).error) {
+    //error creating user
+    state.authConfig.success = false;
+    alert(`Couldn't create user ${(result as any).error}`);
+  } else {
+    await authenticate(state.authConfig); //create user still needs to authenticated
+
+    state.authConfig.success = true;
+  }
+}
+
+async function try_method() {
   let method = await promptAsync<AuthConfig>(state.ui, {
     title: "Welcome to Yarr! - Authenticate",
     config: [{
@@ -131,12 +157,12 @@ async function main () {
       type: "select",
       select: ["Login", "Register"],
       label: "Method"
-    },{
+    }, {
       key: "username",
       default: "",
       type: "string",
       label: "Username"
-    },{
+    }, {
       key: "password",
       default: "",
       type: "password",
@@ -144,50 +170,36 @@ async function main () {
     }],
     cb: undefined
   });
+  Object.assign(state.authConfig, method);
+}
 
-  if (method.method === LoginMethod.LOGIN) {
-    let result = await authenticate(method);
+async function try_login() {
+  let result = await authenticate(state.authConfig);
 
-    let record = result as RecordAuthResponse<DBUser>;
-    
-    if(record.token) {
-      pickPenguin();
-    }
+  state.authResponse = result as RecordAuthResponse<DBUser>;
+
+  if (state.authResponse.token) {
+    state.authConfig.success = true;
   } else {
-
-    let register = await promptAsync<AuthConfig>(state.ui, {
-      title: "Register",
-      config: [{
-        key: "username",
-        default: method.username,
-        type: "string",
-        label: "Username"
-      },{
-        key: "password",
-        default: method.password,
-        type: "password",
-        label: "Password"
-      },{
-        key: "passwordConfirm",
-        default: "",
-        type: "password",
-        label: "Confirm Password"
-      }],
-      cb: undefined
-    });
-
-    let result = await create_user(register);
-
-    if (!result || (result as any).error) {
-      //error creating user
-      alert(`Couldn't create user ${(result as any).error}`);
-    } else {
-      await authenticate(method); //create user still needs to authenticated
-
-      pickPenguin();
-    }
+    state.authConfig.success = false;
   }
+}
 
+async function main() {
+
+  //initialize UI
+  await ui_init();
+
+  //initialize database
+  await db_init();
+
+  //show auth screens until successful login
+  await auth_loop();
+
+  await pick_penguin();
+
+  //start the client given the logged in user and picked penguin
+  client_start();
 }
 
 main();

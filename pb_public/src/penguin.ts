@@ -1,9 +1,9 @@
 
-import { Euler, Material, MeshStandardMaterial, MeshToonMaterial, Vector3 } from "three";
+import { Color, Euler, MeshToonMaterial, Vector3 } from "three";
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { convertToonMaterial, findChildByName, RGBLike, sceneGetAllMaterials } from "./utils.js";
-import type { MsgJson, PlayerState } from "./api.js";
 import { Anim } from "./anim.js";
+import { DBPenguin, PenguinState } from "./db.js";
+import { convertToonMaterial, findChildByName, sceneGetAllMaterials } from "./utils.js";
 
 let loader = new GLTFLoader();
 
@@ -22,30 +22,33 @@ export class Penguin {
     });
   }
 
-  static create (): Promise<Penguin> {
-    return new Promise(async (_resolve, _reject)=>{
-      let result = new Penguin();
-      result.gltf = await Penguin.getGltf();
+  static async create (dbp: DBPenguin) {
+    let result = new Penguin();
 
-      convertToonMaterial(result.gltf.scene);
+    result.gltf = await Penguin.getGltf();
 
-      result.anim = Anim.fromGLTF(result.gltf);
-      result.anim.getAction("wave").timeScale = 4;
-      result.anim.getAction("waddle").timeScale = 4;
-      
-      let materials = sceneGetAllMaterials(result.gltf.scene);
-      result.penguinColorMaterial = materials.get("penguin-color") as MeshToonMaterial;
-      // console.log(result.penguinColorMaterial);
+    convertToonMaterial(result.gltf.scene);
 
-      _resolve(result);
-    });
+    result.anim = Anim.fromGLTF(result.gltf);
+    result.anim.getAction("wave").timeScale = 4;
+    result.anim.getAction("waddle").timeScale = 4;
+    
+    let materials = sceneGetAllMaterials(result.gltf.scene);
+    result.penguinColorMaterial = materials.get("penguin-color") as MeshToonMaterial;
+
+    result.setColorHex(dbp.color);
+    result.name = dbp.name;
+    result.id = dbp.id;
+    result.setState(dbp.state);
+    
+    return result;
   }
 
   walkSpeed: number;
   gltf: GLTF;
   anim: Anim;
   name: string;
-  id: number;
+  id: string;
   room: string;
   penguinColorMaterial: MeshToonMaterial;
 
@@ -67,15 +70,12 @@ export class Penguin {
     return this;
   }
 
-  getColor (): RGBLike {
-    let result: RGBLike = {r: 0, g: 0, b: 0};
-    this.penguinColorMaterial.color.getRGB(result);
-    return result;
+  get color (): Color {
+    return this.penguinColorMaterial.color;
   }
-
-  setColor (c: RGBLike): this {
-    this.penguinColorMaterial.color.setRGB(c.r, c.g, c.b);
-    return this;
+  setColorHex (hex: string) {
+    if (hex.charAt(0) == "#") hex = hex.substring(1);
+    this.color.setHex(parseInt(hex));
   }
 
   constructor () {
@@ -123,21 +123,17 @@ export class Penguin {
     this.anim.mixer.setTime(absTime/1000);
   }
 
-  get state (): MsgJson<PlayerState> {
+  get state (): PenguinState {
     return {
-      type: "state",
-      data: {
-        id: this.id,
-        x: this.target.x,
-        y: this.target.y,
-        z: this.target.z,
-        rx: this.rotation.x,
-        ry: this.rotation.y,
-        rz: this.rotation.z,
-        name: this.name,
-        room: this.room,
-        color: this.getColor()
-      }
+      x: this.target.x,
+      y: this.target.y,
+      z: this.target.z,
+      rx: this.rotation.x,
+      ry: this.rotation.y,
+      rz: this.rotation.z
     };
+  }
+  setState (state: PenguinState) {
+
   }
 }

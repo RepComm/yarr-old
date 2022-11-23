@@ -116,6 +116,16 @@ export async function list_penguins () {
   return result;
 }
 
+export async function get_penguins (ids: Set<string>) {
+  let promises = new Array<Promise<DBPenguin>>();
+
+  for (let id of ids) {
+    promises.push(dbState.db.collection("penguins").getOne<DBPenguin>(id));
+  }
+
+  return await Promise.all(promises);
+}
+
 export async function create_penguin (opts: DBPenguin) {
   let db = dbState.db;
 

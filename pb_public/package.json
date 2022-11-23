@@ -32,7 +32,10 @@
     "publish": "npm publish --access public"
   },
   "dependencies": {
-    "@roguecircuitry/htmless": "https://github.com/RogueCircuitry/htmless",
-    "pocketbase": "^0.8.0"
+    "@repcomm/gameinput-ts": "^1.10.4",
+    "@roguecircuitry/htmless": "github:roguecircuitry/htmless",
+    "@types/three": "^0.146.0",
+    "pocketbase": "^0.8.0",
+    "three": "^0.146.0"
   }
 }
