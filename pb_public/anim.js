@@ -1,4 +1,4 @@
-import { AnimationMixer, LoopPingPong } from "three";
+import { AnimationMixer } from "three";
 export class Anim {
   static fromGLTF(gltf) {
     return new Anim(gltf.scene, gltf.animations);
@@ -6,14 +6,11 @@ export class Anim {
   constructor(root, clips) {
     this.mixer = new AnimationMixer(root);
     this.mixer.addEventListener("finished", evt => {
-      console.warn(evt.action);
+      // console.warn(evt.action);
       // (evt.action as AnimationAction).reset();
     });
-
     this.clips = new Map();
     for (let clip of clips) {
-      let action = this.mixer.clipAction(clip);
-      action.setLoop(LoopPingPong, 2);
       this.clips.set(clip.name, clip);
     }
   }
@@ -38,7 +35,6 @@ export class Anim {
       return;
     }
     let action = this.getAction(name);
-    let clip = this.getClip(name);
 
     // if (!action.isRunning) {
     action.reset();

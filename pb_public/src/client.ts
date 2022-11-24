@@ -1,6 +1,6 @@
 
 import { GameInput } from "@repcomm/gameinput-ts";
-import { DirectionalLight, Intersection, MeshStandardMaterial, Object3D, PerspectiveCamera, Raycaster, Scene, Vector2, WebGLRenderer } from "three";
+import { DirectionalLight, Intersection, LoopPingPong, MeshStandardMaterial, Object3D, PerspectiveCamera, Raycaster, Scene, Vector2, WebGLRenderer } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DEG2RAD, lerp } from "three/src/math/MathUtils.js";
 import { Anim } from "./anim.js";
@@ -183,6 +183,7 @@ async function display_room () {
 
   let currentRoomAnim = state.currentRoomAnim = Anim.fromGLTF(townModel);
   // currentRoomAnim.play();
+  currentRoomAnim.getAction("door-swing").setLoop(LoopPingPong, 2);
 
   scene.add(townModel.scene);
 

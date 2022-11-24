@@ -1,5 +1,5 @@
 import { GameInput } from "@repcomm/gameinput-ts";
-import { DirectionalLight, PerspectiveCamera, Raycaster, Scene, Vector2, WebGLRenderer } from "three";
+import { DirectionalLight, LoopPingPong, PerspectiveCamera, Raycaster, Scene, Vector2, WebGLRenderer } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DEG2RAD } from "three/src/math/MathUtils.js";
 import { Anim } from "./anim.js";
@@ -140,7 +140,7 @@ async function display_room() {
   state.groundClickable = findChildByName(townModel.scene, "ground-clickable");
   let currentRoomAnim = state.currentRoomAnim = Anim.fromGLTF(townModel);
   // currentRoomAnim.play();
-
+  currentRoomAnim.getAction("door-swing").setLoop(LoopPingPong, 2);
   scene.add(townModel.scene);
   let sun = new DirectionalLight(0xffffff, 1.8);
   sun.target = scene;

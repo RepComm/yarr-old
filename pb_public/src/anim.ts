@@ -21,10 +21,6 @@ export class Anim {
     this.clips = new Map();
 
     for (let clip of clips) {
-
-      let action = this.mixer.clipAction(clip);
-      action.setLoop(LoopPingPong, 2);
-
       this.clips.set(clip.name, clip);
     }
   }
@@ -49,7 +45,6 @@ export class Anim {
       return;
     }
     let action = this.getAction(name);
-    let clip = this.getClip(name);
     
     // if (!action.isRunning) {
       action.reset();
