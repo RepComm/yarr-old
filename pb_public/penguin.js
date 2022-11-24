@@ -10,7 +10,7 @@ export class Penguin {
         _resolve(Penguin.gltf);
         return;
       }
-      let result = await loader.loadAsync("./models/penguin.gltf");
+      let result = await loader.loadAsync("./models/penguin.glb");
       _resolve(result);
       return;
     });
@@ -74,7 +74,7 @@ export class Penguin {
     }, 1000 * this.dist / this.walkSpeed);
   }
   wave() {
-    this.anim.playForDuration("wave");
+    this.anim.play("wave");
   }
   update(delta, absTime) {
     this.dist = this.actual.distanceTo(this.target);

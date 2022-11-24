@@ -16,7 +16,7 @@ export class Penguin {
         _resolve(Penguin.gltf);
         return;
       }
-      let result = await loader.loadAsync("./models/penguin.gltf");
+      let result = await loader.loadAsync("./models/penguin.glb");
       _resolve(result);
       return;
     });
@@ -113,7 +113,7 @@ export class Penguin {
   }
 
   wave () {
-    this.anim.playForDuration("wave");
+    this.anim.play("wave");
   }
 
   update (delta: number, absTime: number) {

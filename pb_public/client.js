@@ -1,13 +1,12 @@
 import { GameInput } from "@repcomm/gameinput-ts";
-import { DirectionalLight, LoopPingPong, PerspectiveCamera, Raycaster, Scene, Vector2, WebGLRenderer } from "three";
+import { DirectionalLight, PerspectiveCamera, Raycaster, Scene, Vector2, WebGLRenderer } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DEG2RAD } from "three/src/math/MathUtils.js";
-import { Anim } from "./anim.js";
 import { dbState, deafen_rooms, get_penguins, join_room, listen_room, list_rooms } from "./db.js";
 import { Debounce } from "./debounce.js";
 import { Penguin } from "./penguin.js";
 import { state } from "./state.js";
-import { findChildByName, sceneGetAllMaterials, yarrify_gltf } from "./utils.js";
+import { findChildByName, yarrify_gltf } from "./utils.js";
 export async function getNetworkTime() {
   let result = 0;
   try {
@@ -125,7 +124,7 @@ async function populate_room() {
 }
 async function display_room() {
   let scene = state.scene;
-  let townModel = await state.gltfLoader.loadAsync("./models/coffee-shop.gltf");
+  let townModel = await state.gltfLoader.loadAsync("./models/coffee-shop.glb");
   let out = state.roomInfo = {};
   yarrify_gltf(townModel, out);
   console.log("out", out);
@@ -133,14 +132,17 @@ async function display_room() {
     out.cameraMountPoint.getWorldPosition(state.camera.position);
     out.cameraMountPoint.getWorldQuaternion(state.camera.quaternion);
   }
-  let materials = sceneGetAllMaterials(townModel.scene);
-  // (materials.get("light-cone") as MeshStandardMaterial).emissiveIntensity = 24;
-  let invisMat = materials.get("invisible");
-  if (invisMat) invisMat.visible = false;
+
+  // let materials = sceneGetAllMaterials(townModel.scene);
+  // // (materials.get("light-cone") as MeshStandardMaterial).emissiveIntensity = 24;
+  // let invisMat = materials.get("invisible");
+  // if (invisMat) invisMat.visible = false;
+
   state.groundClickable = findChildByName(townModel.scene, "ground-clickable");
-  let currentRoomAnim = state.currentRoomAnim = Anim.fromGLTF(townModel);
+  let currentRoomAnim = state.currentRoomAnim = out.anim; //Anim.fromGLTF(townModel);
   // currentRoomAnim.play();
-  currentRoomAnim.getAction("door-swing").setLoop(LoopPingPong, 2);
+  // currentRoomAnim.getAction("door-swing").setLoop(LoopPingPong, 2);
+
   scene.add(townModel.scene);
   let sun = new DirectionalLight(0xffffff, 1.8);
   sun.target = scene;

@@ -163,7 +163,7 @@ async function populate_room () {
 async function display_room () {
   let scene = state.scene;
 
-  let townModel = await state.gltfLoader.loadAsync("./models/coffee-shop.gltf");
+  let townModel = await state.gltfLoader.loadAsync("./models/coffee-shop.glb");
 
   let out = state.roomInfo = {} as yarr_info;
   yarrify_gltf(townModel, out);
@@ -174,16 +174,16 @@ async function display_room () {
     out.cameraMountPoint.getWorldQuaternion(state.camera.quaternion);
   }
 
-  let materials = sceneGetAllMaterials(townModel.scene);
-  // (materials.get("light-cone") as MeshStandardMaterial).emissiveIntensity = 24;
-  let invisMat = materials.get("invisible");
-  if (invisMat) invisMat.visible = false;
+  // let materials = sceneGetAllMaterials(townModel.scene);
+  // // (materials.get("light-cone") as MeshStandardMaterial).emissiveIntensity = 24;
+  // let invisMat = materials.get("invisible");
+  // if (invisMat) invisMat.visible = false;
 
   state.groundClickable = findChildByName(townModel.scene, "ground-clickable");
 
-  let currentRoomAnim = state.currentRoomAnim = Anim.fromGLTF(townModel);
+  let currentRoomAnim = state.currentRoomAnim = out.anim;//Anim.fromGLTF(townModel);
   // currentRoomAnim.play();
-  currentRoomAnim.getAction("door-swing").setLoop(LoopPingPong, 2);
+  // currentRoomAnim.getAction("door-swing").setLoop(LoopPingPong, 2);
 
   scene.add(townModel.scene);
 

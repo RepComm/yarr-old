@@ -1,5 +1,6 @@
-import { MeshToonMaterial } from "three";
+import { LoopPingPong, MeshToonMaterial } from "three";
 import { lerp } from "three/src/math/MathUtils.js";
+import { Anim } from "./anim.js";
 export function findChildByName(root, name) {
   let result;
   root.traverse(obj => {
@@ -117,6 +118,7 @@ export const random = {
 };
 export function yarrify_gltf(gltf, out) {
   let scene = gltf.scene;
+  out.anim = Anim.fromGLTF(gltf);
   let materialNames = new Map();
   let lgt;
   let mesh;
@@ -128,24 +130,31 @@ export function yarrify_gltf(gltf, out) {
     }
     if (obj["isLight"]) {
       lgt = obj;
-
-      // console.log(lgt);
-
       lgt.intensity /= 1000;
     }
-    if (obj.userData["hover-anim"] !== undefined) {
+    let hoverAnim = obj.userData["hover-anim"];
+    let hoverAnimLoop = obj.userData["hover-anim-loop"];
+    if (hoverAnim !== undefined) {
       if (!out.hoverAnims) out.hoverAnims = new Map();
       out.hoverAnims.set(obj, obj.userData["hover-anim"]);
+      if (hoverAnimLoop !== undefined) {
+        let action = out.anim.getAction(hoverAnim);
+        if (action) action.setLoop(LoopPingPong, hoverAnimLoop);
+      }
     }
     if (obj["isMesh"]) {
       mesh = obj;
       mat = mesh.material;
-      if (mat.type !== "MeshToonMaterial" && mat.userData["toon"] !== false) {
+      if (mat.userData["invis"] == "true") {
+        mat.visible = false;
+      }
+      if (mat.type !== "MeshToonMaterial" && mat.userData["toon"] !== "false") {
         let nextMaterial = materialNames.get(mat.name);
         if (!nextMaterial) {
           nextMaterial = new MeshToonMaterial({
             color: mat.color,
-            name: mat.name
+            name: mat.name,
+            visible: mat.visible
           });
           materialNames.set(nextMaterial.name, nextMaterial);
         }

@@ -1,7 +1,8 @@
 
-import { Color, Light, Material, Mesh, MeshBasicMaterial, MeshStandardMaterial, MeshToonMaterial, Object3D } from "three";
+import { Light, LoopPingPong, Material, Mesh, MeshBasicMaterial, MeshToonMaterial, Object3D } from "three";
 import { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import { lerp } from "three/src/math/MathUtils.js";
+import { Anim } from "./anim.js";
 
 export function findChildByName(root: Object3D, name: string): Object3D {
   let result: Object3D;
@@ -131,6 +132,7 @@ export type yarr_anim = Map<Object3D, string>;
 
 export interface yarr_info {
   gltf?: GLTF;
+  anim?: Anim;
   hoverAnims?: yarr_anim;
   cameraMountPoint?: Object3D;
 }
@@ -138,10 +140,11 @@ export interface yarr_info {
 export function yarrify_gltf (gltf: GLTF, out: yarr_info) {
   let scene = gltf.scene;
 
+  out.anim = Anim.fromGLTF(gltf);
+
   let materialNames = new Map<string, Material>();
 
   let lgt: Light;
-
   let mesh: Mesh;
   let mat: MeshBasicMaterial;
 
@@ -153,28 +156,42 @@ export function yarrify_gltf (gltf: GLTF, out: yarr_info) {
 
     if ( obj["isLight"] ) {
       lgt = obj as Light;
-      
-      // console.log(lgt);
 
       lgt.intensity /= 1000;
     }
 
-    if (obj.userData["hover-anim"] !== undefined) {
+    let hoverAnim = obj.userData["hover-anim"];
+    let hoverAnimLoop = obj.userData["hover-anim-loop"];
+
+    if (hoverAnim !== undefined) {
       if (!out.hoverAnims) out.hoverAnims = new Map();
       out.hoverAnims.set(obj, obj.userData["hover-anim"]);
+
+      if (hoverAnimLoop !== undefined) {
+        let action = out.anim.getAction(hoverAnim);
+        if (action) action.setLoop(LoopPingPong, hoverAnimLoop);
+      }
+
     }
+
+
 
     if (obj["isMesh"]) {
       mesh = obj as Mesh;
       mat = mesh.material as MeshBasicMaterial;
 
-      if (mat.type !== "MeshToonMaterial" && mat.userData["toon"] !== false) {
+      if (mat.userData["invis"] == "true") {
+        mat.visible = false;
+      }
+
+      if (mat.type !== "MeshToonMaterial" && mat.userData["toon"] !== "false") {
 
         let nextMaterial = materialNames.get(mat.name);
         if (!nextMaterial) {
           nextMaterial = new MeshToonMaterial({
             color: mat.color,
-            name: mat.name
+            name: mat.name,
+            visible: mat.visible
           });
           materialNames.set(nextMaterial.name, nextMaterial);
         }
