@@ -3,7 +3,7 @@ import { Color, Euler, MeshToonMaterial, Vector3 } from "three";
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Anim } from "./anim.js";
 import { DBPenguin, PenguinState } from "./db.js";
-import { convertToonMaterial, findChildByName, sceneGetAllMaterials } from "./utils.js";
+import { findChildByName, sceneGetAllMaterials, yarrify_gltf } from "./utils.js";
 
 let loader = new GLTFLoader();
 
@@ -27,10 +27,7 @@ export class Penguin {
 
     result.gltf = await Penguin.getGltf();
 
-    convertToonMaterial(result.gltf.scene, (mesh, oldMaterial)=>{
-      if (oldMaterial.name == "local") return false;
-      return true;
-    });
+    yarrify_gltf(result.gltf, {});
 
     result.anim = Anim.fromGLTF(result.gltf);
     result.anim.getAction("wave").timeScale = 4;

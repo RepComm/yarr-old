@@ -1,5 +1,6 @@
 
-import { Color, Material, Mesh, MeshBasicMaterial, MeshStandardMaterial, MeshToonMaterial, Object3D } from "three";
+import { Color, Light, Material, Mesh, MeshBasicMaterial, MeshStandardMaterial, MeshToonMaterial, Object3D } from "three";
+import { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import { lerp } from "three/src/math/MathUtils.js";
 
 export function findChildByName(root: Object3D, name: string): Object3D {
@@ -126,35 +127,62 @@ export const random = {
   }
 };
 
-export interface ConvertToonMaterialFilter {
-  (mesh: Mesh, oldMat: Material): boolean;
+export type yarr_anim = Map<Object3D, string>;
+
+export interface yarr_info {
+  gltf?: GLTF;
+  hoverAnims?: yarr_anim;
+  cameraMountPoint?: Object3D;
 }
 
-export function convertToonMaterial(scene: Object3D, filter?: ConvertToonMaterialFilter) {
+export function yarrify_gltf (gltf: GLTF, out: yarr_info) {
+  let scene = gltf.scene;
 
   let materialNames = new Map<string, Material>();
 
-  scene.traverse((obj) => {
-    let mesh = (obj as Mesh);
-    if (!mesh.isMesh) return;
+  let lgt: Light;
 
-    let oldMaterial = mesh.material as MeshBasicMaterial;
+  let mesh: Mesh;
+  let mat: MeshBasicMaterial;
 
-    if (oldMaterial.type === "MeshToonMaterial") return;
-
-    if (filter && !filter(mesh, oldMaterial)) return;
-
-    //merge materials with same name.. why is this even a problem..
-    let nextMaterial = materialNames.get(oldMaterial.name);
-    if (!nextMaterial) {
-      nextMaterial = new MeshToonMaterial({
-        color: oldMaterial.color,
-        name: oldMaterial.name
-      });
-      materialNames.set(nextMaterial.name, nextMaterial);
+  scene.traverse((obj)=>{
+    // console.log(obj.name);
+    if (obj.name === "cameraMountPoint") {
+      out.cameraMountPoint = obj;
     }
 
-    mesh.material = nextMaterial;
+    if ( obj["isLight"] ) {
+      lgt = obj as Light;
+      
+      // console.log(lgt);
+
+      lgt.intensity /= 1000;
+    }
+
+    if (obj.userData["hover-anim"] !== undefined) {
+      if (!out.hoverAnims) out.hoverAnims = new Map();
+      out.hoverAnims.set(obj, obj.userData["hover-anim"]);
+    }
+
+    if (obj["isMesh"]) {
+      mesh = obj as Mesh;
+      mat = mesh.material as MeshBasicMaterial;
+
+      if (mat.type !== "MeshToonMaterial" && mat.userData["toon"] !== false) {
+
+        let nextMaterial = materialNames.get(mat.name);
+        if (!nextMaterial) {
+          nextMaterial = new MeshToonMaterial({
+            color: mat.color,
+            name: mat.name
+          });
+          materialNames.set(nextMaterial.name, nextMaterial);
+        }
+
+        mesh.material = nextMaterial;
+      }
+
+    }
 
   });
 }

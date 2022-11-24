@@ -1,4 +1,4 @@
-import { AnimationAction, AnimationClip, AnimationMixer, Object3D } from "three";
+import { AnimationAction, AnimationClip, AnimationMixer, LoopOnce, LoopPingPong, LoopRepeat, Object3D } from "three";
 import { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export class Anim {
@@ -12,9 +12,19 @@ export class Anim {
 
   constructor (root: Object3D, clips: AnimationClip[]) {
     this.mixer = new AnimationMixer(root);
+
+    this.mixer.addEventListener("finished", (evt)=>{
+      // console.warn(evt.action);
+      // (evt.action as AnimationAction).reset();
+    });
+
     this.clips = new Map();
 
     for (let clip of clips) {
+
+      let action = this.mixer.clipAction(clip);
+      action.setLoop(LoopPingPong, 2);
+
       this.clips.set(clip.name, clip);
     }
   }
@@ -38,18 +48,14 @@ export class Anim {
       }
       return;
     }
-    this.getAction(name).reset().play();
-  }
-  playForDuration (name: string) {
-    let action = this.getAction(name).reset();
-
+    let action = this.getAction(name);
     let clip = this.getClip(name);
-
-    setTimeout(()=>{
-      action.stop();
-    }, (clip.duration * 1000) / action.timeScale );
     
-    action.play();
+    // if (!action.isRunning) {
+      action.reset();
+      action.play();
+    // }
+
   }
   stop (name?: string) {
     if (!name) {

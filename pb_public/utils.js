@@ -115,24 +115,42 @@ export const random = {
     return rgbToHex(HSVtoRGB(random.between(min, max), random.between(min, max), random.between(min, max)));
   }
 };
-export function convertToonMaterial(scene, filter) {
+export function yarrify_gltf(gltf, out) {
+  let scene = gltf.scene;
   let materialNames = new Map();
+  let lgt;
+  let mesh;
+  let mat;
   scene.traverse(obj => {
-    let mesh = obj;
-    if (!mesh.isMesh) return;
-    let oldMaterial = mesh.material;
-    if (oldMaterial.type === "MeshToonMaterial") return;
-    if (filter && !filter(mesh, oldMaterial)) return;
-
-    //merge materials with same name.. why is this even a problem..
-    let nextMaterial = materialNames.get(oldMaterial.name);
-    if (!nextMaterial) {
-      nextMaterial = new MeshToonMaterial({
-        color: oldMaterial.color,
-        name: oldMaterial.name
-      });
-      materialNames.set(nextMaterial.name, nextMaterial);
+    // console.log(obj.name);
+    if (obj.name === "cameraMountPoint") {
+      out.cameraMountPoint = obj;
     }
-    mesh.material = nextMaterial;
+    if (obj["isLight"]) {
+      lgt = obj;
+
+      // console.log(lgt);
+
+      lgt.intensity /= 1000;
+    }
+    if (obj.userData["hover-anim"] !== undefined) {
+      if (!out.hoverAnims) out.hoverAnims = new Map();
+      out.hoverAnims.set(obj, obj.userData["hover-anim"]);
+    }
+    if (obj["isMesh"]) {
+      mesh = obj;
+      mat = mesh.material;
+      if (mat.type !== "MeshToonMaterial" && mat.userData["toon"] !== false) {
+        let nextMaterial = materialNames.get(mat.name);
+        if (!nextMaterial) {
+          nextMaterial = new MeshToonMaterial({
+            color: mat.color,
+            name: mat.name
+          });
+          materialNames.set(nextMaterial.name, nextMaterial);
+        }
+        mesh.material = nextMaterial;
+      }
+    }
   });
 }

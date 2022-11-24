@@ -7,7 +7,7 @@ import { dbState, deafen_rooms, get_penguins, join_room, listen_room, list_rooms
 import { Debounce } from "./debounce.js";
 import { Penguin } from "./penguin.js";
 import { state } from "./state.js";
-import { convertToonMaterial, findChildByName, sceneGetAllMaterials } from "./utils.js";
+import { findChildByName, sceneGetAllMaterials, yarrify_gltf } from "./utils.js";
 export async function getNetworkTime() {
   let result = 0;
   try {
@@ -125,22 +125,26 @@ async function populate_room() {
 }
 async function display_room() {
   let scene = state.scene;
-  let townModel = await state.gltfLoader.loadAsync("./models/town.gltf");
-  convertToonMaterial(townModel.scene, (mesh, oldMat) => {
-    if (oldMat.name === "light-cone") return false;
-    return true;
-  });
+  let townModel = await state.gltfLoader.loadAsync("./models/coffee-shop.gltf");
+  let out = state.roomInfo = {};
+  yarrify_gltf(townModel, out);
+  console.log("out", out);
+  if (out.cameraMountPoint) {
+    out.cameraMountPoint.getWorldPosition(state.camera.position);
+    out.cameraMountPoint.getWorldQuaternion(state.camera.quaternion);
+  }
   let materials = sceneGetAllMaterials(townModel.scene);
-  materials.get("light-cone").emissiveIntensity = 24;
+  // (materials.get("light-cone") as MeshStandardMaterial).emissiveIntensity = 24;
   let invisMat = materials.get("invisible");
   if (invisMat) invisMat.visible = false;
   state.groundClickable = findChildByName(townModel.scene, "ground-clickable");
   let currentRoomAnim = state.currentRoomAnim = Anim.fromGLTF(townModel);
-  currentRoomAnim.play();
+  // currentRoomAnim.play();
+
   scene.add(townModel.scene);
   let sun = new DirectionalLight(0xffffff, 1.8);
   sun.target = scene;
-  sun.castShadow = true;
+  // sun.castShadow = true;
   scene.add(sun);
   sun.position.set(41, 1, 10);
 
@@ -167,6 +171,16 @@ async function init_time() {
   state.serverInitTime = await getNetworkTime();
   state.serverPredictedTime = state.serverInitTime;
 }
+const raycaster = new Raycaster();
+let screenspaceTarget = new Vector2();
+function raycast_mouse(evt, ...targets) {
+  let r = state.ui.ref(state.canvas).getRect();
+  screenspaceTarget.set(evt.clientX / r.width * 2 - 1, (r.height - evt.clientY) / r.height * 2 - 1);
+  raycaster.setFromCamera(screenspaceTarget, state.camera);
+  const intersects = raycaster.intersectObjects(targets);
+  if (!intersects || intersects.length < 1) return null;
+  return intersects;
+}
 async function render_loop() {
   const {
     ui,
@@ -177,19 +191,29 @@ async function render_loop() {
     camera,
     input
   } = state;
-  const raycaster = new Raycaster();
-  let screenspaceTarget = new Vector2();
-  ui.ref(canvas).on("click", async evt => {
+  ui.ref(canvas).on("mousemove", evt => {
+    if (state.roomInfo && state.roomInfo.hoverAnims) {
+      let objs = new Array();
+      for (let [obj, clipName] of state.roomInfo.hoverAnims) {
+        objs.push(obj);
+      }
+      let intersections = raycast_mouse(evt, ...objs);
+      if (!intersections) return;
+      for (let intersection of intersections) {
+        let clipName = state.roomInfo.hoverAnims.get(intersection.object);
+        if (!clipName) clipName = state.roomInfo.hoverAnims.get(intersection.object.parent);
+        if (!clipName) continue;
+        state.currentRoomAnim.play(clipName);
+      }
+    }
+  }).on("click", async evt => {
     if (!state.groundClickable) {
       console.warn("state.groundClickable is falsy! cannot click");
       return;
     }
-    let r = ui.getRect();
-    screenspaceTarget.set(evt.clientX / r.width * 2 - 1, (r.height - evt.clientY) / r.height * 2 - 1);
-    raycaster.setFromCamera(screenspaceTarget, camera);
-    const intersects = raycaster.intersectObject(state.groundClickable);
+    let intersects = raycast_mouse(evt, state.groundClickable);
     if (!intersects || intersects.length < 1) return;
-    const intersect = intersects[0];
+    let intersect = intersects[0];
     localPenguin.gltf.scene.lookAt(intersect.point);
     localPenguin.setTarget(intersect.point.x, intersect.point.y, intersect.point.z);
 
@@ -232,9 +256,12 @@ async function render_loop() {
     }
     renderer.render(scene, camera);
     if (state.currentRoomAnim) {
-      state.currentRoomAnim.mixer.setTime(state.serverPredictedTime / 1000);
+      state.currentRoomAnim.mixer.update(timeDelta / 1000);
+
+      // state.currentRoomAnim.mixer.setTime(state.serverPredictedTime / 1000);
     }
   };
+
   requestAnimationFrame(render);
 }
 export async function client_start() {

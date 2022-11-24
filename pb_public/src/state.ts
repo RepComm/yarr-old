@@ -7,6 +7,7 @@ import type { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { Anim } from "./anim.js";
 import type { DBPenguin, DBRoom, DBUser } from "./db.js";
 import type { Penguin } from "./penguin.js";
+import { yarr_anim, yarr_info } from "./utils.js";
 
 export enum LoginMethod {
   LOGIN,
@@ -50,6 +51,8 @@ export interface State {
   renderer?: WebGLRenderer;
   input?: GameInput;
   groundClickable?: Object3D;
+
+  roomInfo?: yarr_info;
 }
 
 export const state: State = {
