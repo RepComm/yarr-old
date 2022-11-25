@@ -284,9 +284,9 @@ async function render_loop () {
           objs.push(obj);
         }
         let intersects = raycast_mouse(evt, ...objs);
-        if (intersects.length > 0) {
+        if (intersects && intersects.length > 0) {
           let intersect = intersects[0];
-
+          
           let m = state.roomInfo.minigames.get(intersect.object);
           if (!m) m = state.roomInfo.minigames.get(intersect.object.parent);
           if (m) {

@@ -220,7 +220,7 @@ async function render_loop() {
           objs.push(obj);
         }
         let _intersects = raycast_mouse(evt, ...objs);
-        if (_intersects.length > 0) {
+        if (_intersects && _intersects.length > 0) {
           let _intersect = _intersects[0];
           let m = state.roomInfo.minigames.get(_intersect.object);
           if (!m) m = state.roomInfo.minigames.get(_intersect.object.parent);
