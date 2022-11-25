@@ -2,3 +2,5 @@
 /pb_data/
 *.d.ts
 /pb_public/node_modules/
+ssl.key.pem
+ssl.cert.pem

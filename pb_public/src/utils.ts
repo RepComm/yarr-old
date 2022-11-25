@@ -191,7 +191,8 @@ export function yarrify_gltf (gltf: GLTF, out: yarr_info) {
           nextMaterial = new MeshToonMaterial({
             color: mat.color,
             name: mat.name,
-            visible: mat.visible
+            visible: mat.visible,
+            map: mat.map
           });
           materialNames.set(nextMaterial.name, nextMaterial);
         }

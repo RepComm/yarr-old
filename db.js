@@ -17,7 +17,6 @@ export async function db_user_exists(username) {
   let db = dbState.db;
   username = escape(username);
   let result = await db.collection("users").getFirstListItem(`username="${username}"`);
-  console.log(result);
   return true;
 }
 export async function db_create_user(opts) {
