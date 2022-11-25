@@ -169,6 +169,7 @@ async function display_room () {
   yarrify_gltf(townModel, out);
 
   console.log("out", out);
+
   if (out.cameraMountPoint) {
     out.cameraMountPoint.getWorldPosition(state.camera.position);
     out.cameraMountPoint.getWorldQuaternion(state.camera.quaternion);
@@ -274,6 +275,25 @@ async function render_loop () {
     if (!state.groundClickable) {
       console.warn("state.groundClickable is falsy! cannot click");
       return;
+    }
+
+    {
+      if (state.roomInfo && state.roomInfo.minigames) {
+        let objs = new Array<Object3D>();
+        for (let [obj, minigame] of state.roomInfo.minigames) {
+          objs.push(obj);
+        }
+        let intersects = raycast_mouse(evt, ...objs);
+        if (intersects.length > 0) {
+          let intersect = intersects[0];
+
+          let m = state.roomInfo.minigames.get(intersect.object);
+          if (!m) m = state.roomInfo.minigames.get(intersect.object.parent);
+          if (m) {
+            console.log("minigame", m);
+          }
+        }
+      }
     }
 
     let intersects = raycast_mouse(evt, state.groundClickable);

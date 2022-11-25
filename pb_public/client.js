@@ -213,6 +213,23 @@ async function render_loop() {
       console.warn("state.groundClickable is falsy! cannot click");
       return;
     }
+    {
+      if (state.roomInfo && state.roomInfo.minigames) {
+        let objs = new Array();
+        for (let [obj, minigame] of state.roomInfo.minigames) {
+          objs.push(obj);
+        }
+        let _intersects = raycast_mouse(evt, ...objs);
+        if (_intersects.length > 0) {
+          let _intersect = _intersects[0];
+          let m = state.roomInfo.minigames.get(_intersect.object);
+          if (!m) m = state.roomInfo.minigames.get(_intersect.object.parent);
+          if (m) {
+            console.log("minigame", m);
+          }
+        }
+      }
+    }
     let intersects = raycast_mouse(evt, state.groundClickable);
     if (!intersects || intersects.length < 1) return;
     let intersect = intersects[0];

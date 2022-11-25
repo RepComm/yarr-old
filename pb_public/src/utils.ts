@@ -130,10 +130,13 @@ export const random = {
 
 export type yarr_anim = Map<Object3D, string>;
 
+export type yarr_minigames = Map<Object3D, string>;
+
 export interface yarr_info {
   gltf?: GLTF;
   anim?: Anim;
   hoverAnims?: yarr_anim;
+  minigames?: yarr_minigames;
   cameraMountPoint?: Object3D;
 }
 
@@ -165,16 +168,20 @@ export function yarrify_gltf (gltf: GLTF, out: yarr_info) {
 
     if (hoverAnim !== undefined) {
       if (!out.hoverAnims) out.hoverAnims = new Map();
-      out.hoverAnims.set(obj, obj.userData["hover-anim"]);
+      out.hoverAnims.set(obj, hoverAnim);
 
       if (hoverAnimLoop !== undefined) {
         let action = out.anim.getAction(hoverAnim);
         if (action) action.setLoop(LoopPingPong, hoverAnimLoop);
       }
-
     }
 
+    let minigame = obj.userData["minigame"];
 
+    if (minigame !== undefined) {
+      if (!out.minigames) out.minigames = new Map();
+      out.minigames.set(obj, minigame);
+    }
 
     if (obj["isMesh"]) {
       mesh = obj as Mesh;
