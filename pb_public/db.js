@@ -5,7 +5,7 @@ export async function db_init() {
   dbState.dbUrl = `${state.ssl ? "https" : "http"}://${state.host}`;
   dbState.db = new PocketBase(dbState.dbUrl);
 }
-export async function authenticate(opts) {
+export async function db_authenticate(opts) {
   let db = dbState.db;
   db.authStore.clear();
   let record;
@@ -28,7 +28,7 @@ export function buildQueryParams(v) {
   result = `?${result.substring(1)}`;
   return result;
 }
-export async function create_user(opts) {
+export async function db_create_user(opts) {
   let query = buildQueryParams(opts);
   let db = dbState.db;
   db.authStore.clear();
@@ -42,7 +42,7 @@ export async function create_user(opts) {
   return json;
 }
 /**Get a list of penguins by their ID*/
-export async function get_penguins(ids) {
+export async function db_get_penguins(ids) {
   let promises = new Array();
   for (let id of ids) {
     promises.push(dbState.db.collection("penguins").getOne(id));
@@ -51,12 +51,12 @@ export async function get_penguins(ids) {
 }
 
 /**Get a list of the current logged in user's penguins*/
-export async function get_own_penguins() {
+export async function db_get_own_penguins() {
   return await dbState.db.collection("penguins").getFullList(10, {
     filter: `owner.id="${dbState.db.authStore.model.id}"`
   });
 }
-export async function create_penguin(opts) {
+export async function db_create_penguin(opts) {
   let db = dbState.db;
   opts.owner = db.authStore.model.id;
   let result;
@@ -67,7 +67,7 @@ export async function create_penguin(opts) {
   }
   return result;
 }
-export async function list_rooms(occupantId) {
+export async function db_list_rooms(occupantId) {
   let db = dbState.db;
   let params = undefined;
   if (occupantId !== undefined) {
@@ -78,14 +78,25 @@ export async function list_rooms(occupantId) {
   let rooms = await db.collection("rooms").getFullList(undefined, params);
   return rooms;
 }
-export async function get_room(name) {
+export async function db_get_room(name) {
   let db = dbState.db;
   let result = await db.collection("rooms").getFirstListItem(`name="${name}"`);
   return result;
 }
-export async function join_room(room, penguin) {
+export async function db_get_room_resources(room) {
   let db = dbState.db;
-  let rooms = await list_rooms(penguin.id);
+  let promises = new Array();
+  for (let resourceId of room.resources) {
+    promises.push(db.collection("resources").getOne(resourceId));
+  }
+  return await Promise.all(promises);
+}
+export async function db_listen_room_resources() {}
+
+/**Update the penguin to be in a specific room on the database, and no other rooms*/
+export async function db_join_room(room, penguin) {
+  let db = dbState.db;
+  let rooms = await db_list_rooms(penguin.id);
   const promises = new Array();
 
   /**Remove from joined rooms*/
@@ -108,11 +119,11 @@ export async function join_room(room, penguin) {
   //I think this batches the updates together?..
   return await Promise.all(promises);
 }
-export async function listen_room(room, callback) {
+export async function db_listen_room(room, callback) {
   let db = dbState.db;
   await db.collection("rooms").subscribe(room.id, callback);
 }
-export async function deafen_rooms() {
+export async function db_deafen_rooms() {
   let db = dbState.db;
   await db.collection("rooms").unsubscribe("*");
 }

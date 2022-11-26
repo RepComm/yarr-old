@@ -2,12 +2,11 @@
 import type { GameInput } from "@repcomm/gameinput-ts";
 import type { UIBuilder } from "@roguecircuitry/htmless";
 import type { RecordAuthResponse } from "pocketbase";
-import type { Object3D, PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import type { LoadingManager, PerspectiveCamera, WebGLRenderer } from "three";
 import type { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import type { Anim } from "./anim.js";
-import type { DBPenguin, DBRoom, DBUser } from "./db.js";
+import type { DBPenguin, DBResource, DBRoom, DBUser, RelationId } from "./db.js";
 import type { Penguin } from "./penguin.js";
-import { yarr_anim, yarr_info } from "./utils.js";
+import { Object3DProvider, Resource } from "./resource.js";
 
 export enum LoginMethod {
   LOGIN,
@@ -42,17 +41,16 @@ export interface State {
 
   gltfLoader?: GLTFLoader;
   canvas?: HTMLCanvasElement;
-  scene?: Scene;
+
+  sceneProvider?: Object3DProvider;
+  resources?: Map<RelationId<DBResource>, Resource>;
+
   camera?: PerspectiveCamera;
   trackedPenguins?: Map<string, Penguin>;
   currentRoom?: DBRoom;
-  currentRoomAnim?: Anim;
 
   renderer?: WebGLRenderer;
   input?: GameInput;
-  groundClickable?: Object3D;
-
-  roomInfo?: yarr_info;
 }
 
 export const state: State = {

@@ -47,3 +47,32 @@ export async function db_create_user(opts) {
   }
   return result;
 }
+export async function db_start_resource_map(map) {
+  await dbState.db.collection("resources").subscribe("*", data => {
+    let {
+      url,
+      id
+    } = data.record;
+    if (!map.has(url)) map.set(url, id);
+  });
+  let currentResources = await dbState.db.collection("resources").getFullList(32);
+  for (let data of currentResources) {
+    let {
+      url,
+      id
+    } = data;
+    if (!map.has(url)) map.set(url, id);
+  }
+}
+export async function db_end_resource_map() {
+  dbState.db.collection("resources").unsubscribe();
+}
+export async function db_update_resource_version(id) {
+  let {
+    version
+  } = await dbState.db.collection("resources").getOne(id);
+  version++;
+  dbState.db.collection("resources").update(id, {
+    version
+  });
+}

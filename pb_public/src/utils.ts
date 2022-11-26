@@ -1,8 +1,8 @@
 
-import { Light, LoopPingPong, Material, Mesh, MeshBasicMaterial, MeshToonMaterial, Object3D } from "three";
-import { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
+import { Material, Mesh, Object3D } from "three";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { lerp } from "three/src/math/MathUtils.js";
-import { Anim } from "./anim.js";
+import { state } from "./state.js";
 
 export function findChildByName(root: Object3D, name: string): Object3D {
   let result: Object3D;
@@ -128,86 +128,20 @@ export const random = {
   }
 };
 
-export type yarr_anim = Map<Object3D, string>;
-
-export type yarr_minigames = Map<Object3D, string>;
-
-export interface yarr_info {
-  gltf?: GLTF;
-  anim?: Anim;
-  hoverAnims?: yarr_anim;
-  minigames?: yarr_minigames;
-  cameraMountPoint?: Object3D;
+export function gltf_parse (ab: ArrayBuffer, path: string): Promise<GLTF> {
+  return new Promise(async (_resolve, _reject)=>{
+    state.gltfLoader.parse(ab, path, (gltf)=>{
+      _resolve(gltf);
+      return;
+    }, (err)=>{
+      _reject(err);
+      return;
+    });
+  });
 }
 
-export function yarrify_gltf (gltf: GLTF, out: yarr_info) {
-  let scene = gltf.scene;
-
-  out.anim = Anim.fromGLTF(gltf);
-
-  let materialNames = new Map<string, Material>();
-
-  let lgt: Light;
-  let mesh: Mesh;
-  let mat: MeshBasicMaterial;
-
-  scene.traverse((obj)=>{
-    // console.log(obj.name);
-    if (obj.name === "cameraMountPoint") {
-      out.cameraMountPoint = obj;
-    }
-
-    if ( obj["isLight"] ) {
-      lgt = obj as Light;
-
-      lgt.intensity /= 1000;
-    }
-
-    let hoverAnim = obj.userData["hover-anim"];
-    let hoverAnimLoop = obj.userData["hover-anim-loop"];
-
-    if (hoverAnim !== undefined) {
-      if (!out.hoverAnims) out.hoverAnims = new Map();
-      out.hoverAnims.set(obj, hoverAnim);
-
-      if (hoverAnimLoop !== undefined) {
-        let action = out.anim.getAction(hoverAnim);
-        if (action) action.setLoop(LoopPingPong, hoverAnimLoop);
-      }
-    }
-
-    let minigame = obj.userData["minigame"];
-
-    if (minigame !== undefined) {
-      if (!out.minigames) out.minigames = new Map();
-      out.minigames.set(obj, minigame);
-    }
-
-    if (obj["isMesh"]) {
-      mesh = obj as Mesh;
-      mat = mesh.material as MeshBasicMaterial;
-
-      if (mat.userData["invis"] == "true") {
-        mat.visible = false;
-      }
-
-      if (mat.type !== "MeshToonMaterial" && mat.userData["toon"] !== "false") {
-
-        let nextMaterial = materialNames.get(mat.name);
-        if (!nextMaterial) {
-          nextMaterial = new MeshToonMaterial({
-            color: mat.color,
-            name: mat.name,
-            visible: mat.visible,
-            map: mat.map
-          });
-          materialNames.set(nextMaterial.name, nextMaterial);
-        }
-
-        mesh.material = nextMaterial;
-      }
-
-    }
-
-  });
+export async function gltf_load (url: string) {
+  let resp = await fetch(url, { cache: "reload" });
+  let ab = await resp.arrayBuffer();
+  return await gltf_parse(ab, url);
 }

@@ -12,7 +12,11 @@ import serveHandler from "serve-handler";
 
 import { createServer, ServerOptions } from "https";
 import { HTTPStatusCode, respondJson } from "./utils.js";
-import { db_create_user, db_init, OptsCreateUser } from "./db.js";
+import { dbState, db_create_user, db_init, db_start_resource_map, db_update_resource_version, OptsCreateUser } from "./db.js";
+
+import watch from "node-watch";
+import EventSourcePkg from "eventsource";
+global.EventSource = EventSourcePkg;
 
 interface ResNetworkTime {
   now: number;
@@ -117,6 +121,25 @@ async function main () {
   }).listen(publicPort);
 
   console.log(`Yarr Web/Proxy Server started https://localhost:${publicPort}`);
+
+  let resMap = new Map<string, string>();
+  await db_start_resource_map(resMap);
+
+  let modelsWatcher = watch("./pb_public/models", {delay: 200, recursive: false});
+  modelsWatcher.on("change", (type, fname: string)=>{
+    fname = fname.split("\\").join("/"); //handle windows paths
+
+    fname = "./" + fname.substring("pb_public/".length);
+
+    // console.log("[node-watch] detected change of", fname);
+    
+      let resId = resMap.get(fname);
+
+      if (resId) {
+        console.log("fs change: ", fname, "updating resource", resId);
+        db_update_resource_version(resId);
+      }
+  });
 
 }
 

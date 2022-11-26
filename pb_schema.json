@@ -1,0 +1,230 @@
+[
+  {
+    "id": "_pb_users_auth_",
+    "name": "users",
+    "type": "auth",
+    "system": false,
+    "schema": [
+      {
+        "id": "users_name",
+        "name": "name",
+        "type": "text",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "users_avatar",
+        "name": "avatar",
+        "type": "file",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "maxSize": 5242880,
+          "mimeTypes": [
+            "image/jpg",
+            "image/jpeg",
+            "image/png",
+            "image/svg+xml",
+            "image/gif"
+          ],
+          "thumbs": null
+        }
+      }
+    ],
+    "listRule": "id = @request.auth.id",
+    "viewRule": "id = @request.auth.id",
+    "createRule": null,
+    "updateRule": "id = @request.auth.id",
+    "deleteRule": null,
+    "options": {
+      "allowEmailAuth": true,
+      "allowOAuth2Auth": true,
+      "allowUsernameAuth": true,
+      "exceptEmailDomains": null,
+      "manageRule": null,
+      "minPasswordLength": 8,
+      "onlyEmailDomains": null,
+      "requireEmail": false
+    }
+  },
+  {
+    "id": "ujpco1bmjkjmshl",
+    "name": "penguins",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "cfv3pirw",
+        "name": "color",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "unique": false,
+        "options": {
+          "min": 3,
+          "max": 9,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "wmyoo8kv",
+        "name": "name",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "unique": false,
+        "options": {
+          "min": 3,
+          "max": 32,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "qvtilnik",
+        "name": "owner",
+        "type": "relation",
+        "system": false,
+        "required": true,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": true
+        }
+      },
+      {
+        "id": "9znjtixt",
+        "name": "state",
+        "type": "json",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {}
+      }
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": "@request.auth.id = owner.id",
+    "updateRule": "@request.auth.id = owner.id",
+    "deleteRule": "@request.auth.id = owner.id",
+    "options": {}
+  },
+  {
+    "id": "dctqdlw2so7119o",
+    "name": "rooms",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "yugbwomb",
+        "name": "name",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "qd6zrqb1",
+        "name": "occupants",
+        "type": "relation",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {
+          "maxSelect": null,
+          "collectionId": "ujpco1bmjkjmshl",
+          "cascadeDelete": true
+        }
+      },
+      {
+        "id": "bfdkaqnn",
+        "name": "resources",
+        "type": "relation",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 10,
+          "collectionId": "c5u0zwiqlkt6st3",
+          "cascadeDelete": false
+        }
+      }
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": null,
+    "updateRule": "",
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "c5u0zwiqlkt6st3",
+    "name": "resources",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "gfgltgtn",
+        "name": "name",
+        "type": "text",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "bgykaixp",
+        "name": "type",
+        "type": "select",
+        "system": false,
+        "required": true,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "model",
+            "json",
+            "texture",
+            "audio"
+          ]
+        }
+      },
+      {
+        "id": "yilzwszt",
+        "name": "url",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": "^./"
+        }
+      }
+    ],
+    "listRule": null,
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  }
+]

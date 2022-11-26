@@ -1,6 +1,5 @@
-import { LoopPingPong, MeshToonMaterial } from "three";
 import { lerp } from "three/src/math/MathUtils.js";
-import { Anim } from "./anim.js";
+import { state } from "./state.js";
 export function findChildByName(root, name) {
   let result;
   root.traverse(obj => {
@@ -116,56 +115,21 @@ export const random = {
     return rgbToHex(HSVtoRGB(random.between(min, max), random.between(min, max), random.between(min, max)));
   }
 };
-export function yarrify_gltf(gltf, out) {
-  let scene = gltf.scene;
-  out.anim = Anim.fromGLTF(gltf);
-  let materialNames = new Map();
-  let lgt;
-  let mesh;
-  let mat;
-  scene.traverse(obj => {
-    // console.log(obj.name);
-    if (obj.name === "cameraMountPoint") {
-      out.cameraMountPoint = obj;
-    }
-    if (obj["isLight"]) {
-      lgt = obj;
-      lgt.intensity /= 1000;
-    }
-    let hoverAnim = obj.userData["hover-anim"];
-    let hoverAnimLoop = obj.userData["hover-anim-loop"];
-    if (hoverAnim !== undefined) {
-      if (!out.hoverAnims) out.hoverAnims = new Map();
-      out.hoverAnims.set(obj, hoverAnim);
-      if (hoverAnimLoop !== undefined) {
-        let action = out.anim.getAction(hoverAnim);
-        if (action) action.setLoop(LoopPingPong, hoverAnimLoop);
-      }
-    }
-    let minigame = obj.userData["minigame"];
-    if (minigame !== undefined) {
-      if (!out.minigames) out.minigames = new Map();
-      out.minigames.set(obj, minigame);
-    }
-    if (obj["isMesh"]) {
-      mesh = obj;
-      mat = mesh.material;
-      if (mat.userData["invis"] == "true") {
-        mat.visible = false;
-      }
-      if (mat.type !== "MeshToonMaterial" && mat.userData["toon"] !== "false") {
-        let nextMaterial = materialNames.get(mat.name);
-        if (!nextMaterial) {
-          nextMaterial = new MeshToonMaterial({
-            color: mat.color,
-            name: mat.name,
-            visible: mat.visible,
-            map: mat.map
-          });
-          materialNames.set(nextMaterial.name, nextMaterial);
-        }
-        mesh.material = nextMaterial;
-      }
-    }
+export function gltf_parse(ab, path) {
+  return new Promise(async (_resolve, _reject) => {
+    state.gltfLoader.parse(ab, path, gltf => {
+      _resolve(gltf);
+      return;
+    }, err => {
+      _reject(err);
+      return;
+    });
   });
+}
+export async function gltf_load(url) {
+  let resp = await fetch(url, {
+    cache: "reload"
+  });
+  let ab = await resp.arrayBuffer();
+  return await gltf_parse(ab, url);
 }

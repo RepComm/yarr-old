@@ -2,7 +2,7 @@
 import { exponent, UIBuilder } from "@roguecircuitry/htmless";
 import { RecordAuthResponse } from "pocketbase";
 import { client_start } from "./client.js";
-import { authenticate, create_penguin, create_user, DBPenguin, DBUser, db_init, get_own_penguins } from "./db.js";
+import { db_authenticate, db_create_penguin, db_create_user, DBPenguin, DBUser, db_init, db_get_own_penguins } from "./db.js";
 import { AuthConfig, LoginMethod, state } from "./state.js";
 import { styles } from "./styles.js";
 import { promptAsync } from "./ui/prompt.js";
@@ -14,7 +14,7 @@ export interface PenguinSelection {
 async function pick_penguin() {
   let ui = state.ui;
   
-  let penguins = await get_own_penguins();
+  let penguins = await db_get_own_penguins();
 
   let penguinNames = new Array<string>();
 
@@ -56,7 +56,7 @@ async function pick_penguin() {
       }]
     });
 
-    let result = await create_penguin(creation) as DBPenguin;
+    let result = await db_create_penguin(creation) as DBPenguin;
 
     alert(`Successfully created penguin ${result.name}!`);
     // console.log("DB created penguin", result);
@@ -137,14 +137,14 @@ async function try_register() {
     cb: undefined
   });
 
-  let result = await create_user(register);
+  let result = await db_create_user(register);
 
   if (!result || (result as any).error) {
     //error creating user
     state.authConfig.success = false;
     alert(`Couldn't create user ${(result as any).error}`);
   } else {
-    await authenticate(state.authConfig); //create user still needs to authenticated
+    await db_authenticate(state.authConfig); //create user still needs to authenticated
 
     state.authConfig.success = true;
   }
@@ -179,7 +179,7 @@ async function try_method() {
 
 async function try_login() {
   state.authConfig.success = false;
-  let result = await authenticate(state.authConfig);
+  let result = await db_authenticate(state.authConfig);
 
   state.authResponse = result as RecordAuthResponse<DBUser>;
 

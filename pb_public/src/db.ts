@@ -27,7 +27,7 @@ export interface OptsAuth {
   username: string;
   password: string;
 }
-export async function authenticate (opts: OptsAuth) {
+export async function db_authenticate (opts: OptsAuth) {
   let db = dbState.db;
 
   db.authStore.clear();
@@ -64,7 +64,7 @@ export interface OptsCreateUser {
   name?: string;
 }
 
-export async function create_user (opts: OptsCreateUser) {
+export async function db_create_user (opts: OptsCreateUser) {
   let query = buildQueryParams(opts);
 
   let db = dbState.db;
@@ -101,7 +101,7 @@ export interface DBPenguin extends CollectionItem {
 }
 
 /**Get a list of penguins by their ID*/
-export async function get_penguins (ids: Set<string>) {
+export async function db_get_penguins (ids: Set<string>) {
   let promises = new Array<Promise<DBPenguin>>();
 
   for (let id of ids) {
@@ -112,13 +112,13 @@ export async function get_penguins (ids: Set<string>) {
 }
 
 /**Get a list of the current logged in user's penguins*/
-export async function get_own_penguins () {
+export async function db_get_own_penguins () {
   return await dbState.db.collection("penguins").getFullList<DBPenguin>(10, {
     filter: `owner.id="${dbState.db.authStore.model.id}"`
   });
 }
 
-export async function create_penguin (opts: DBPenguin) {
+export async function db_create_penguin (opts: DBPenguin) {
   let db = dbState.db;
 
   opts.owner = db.authStore.model.id;
@@ -133,12 +133,21 @@ export async function create_penguin (opts: DBPenguin) {
   return result;
 }
 
+export type DBResourceType = "model"| "json"| "texture"| "audio";
+
+export interface DBResource extends CollectionItem {
+  name: string;
+  url: string;
+  type: DBResourceType;
+}
+
 export interface DBRoom extends CollectionItem {
   name: string;
   occupants: Array<RelationId<DBPenguin>>;
+  resources?: Array<RelationId<DBResource>>;
 }
 
-export async function list_rooms (occupantId?: string) {
+export async function db_list_rooms (occupantId?: string) {
   let db = dbState.db;
 
   let params = undefined;
@@ -153,7 +162,7 @@ export async function list_rooms (occupantId?: string) {
   return rooms;
 }
 
-export async function get_room (name: string) {
+export async function db_get_room (name: string) {
   let db = dbState.db;
 
   let result = await db.collection("rooms").getFirstListItem<DBRoom>(`name="${name}"`);
@@ -161,10 +170,26 @@ export async function get_room (name: string) {
   return result;
 }
 
-export async function join_room (room: DBRoom, penguin: DBPenguin) {
+export async function db_get_room_resources (room: DBRoom) {
   let db = dbState.db;
 
-  let rooms = await list_rooms(penguin.id);
+  let promises = new Array<Promise<DBResource>>();
+
+  for (let resourceId of room.resources) {
+    promises.push( db.collection("resources").getOne(resourceId) );
+  }
+
+  return await Promise.all(promises);
+}
+export async function db_listen_room_resources () {
+  
+}
+
+/**Update the penguin to be in a specific room on the database, and no other rooms*/
+export async function db_join_room (room: DBRoom, penguin: DBPenguin) {
+  let db = dbState.db;
+
+  let rooms = await db_list_rooms(penguin.id);
 
   const promises = new Array();
 
@@ -192,12 +217,12 @@ export async function join_room (room: DBRoom, penguin: DBPenguin) {
   return await Promise.all(promises);
 }
 
-export async function listen_room (room: DBRoom, callback: (data: RecordSubscription<DBRoom>) => void) {
+export async function db_listen_room (room: DBRoom, callback: (data: RecordSubscription<DBRoom>) => void) {
   let db = dbState.db;
   await db.collection("rooms").subscribe(room.id, callback);
 }
 
-export async function deafen_rooms() {
+export async function db_deafen_rooms() {
   let db = dbState.db;
   await db.collection("rooms").unsubscribe("*");
 }

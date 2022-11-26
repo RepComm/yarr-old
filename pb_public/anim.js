@@ -1,14 +1,20 @@
 import { AnimationMixer } from "three";
 export class Anim {
+  static get all() {
+    if (!Anim._all) Anim._all = new Set();
+    return Anim._all;
+  }
   static fromGLTF(gltf) {
     return new Anim(gltf.scene, gltf.animations);
   }
   constructor(root, clips) {
+    if (root && clips) this.config(root, clips);
+  }
+  config(root, clips) {
+    if (this.mixer) this.mixer.stopAllAction();
+    Anim.all.add(this); //TODO handle removal of anim
+
     this.mixer = new AnimationMixer(root);
-    this.mixer.addEventListener("finished", evt => {
-      // console.warn(evt.action);
-      // (evt.action as AnimationAction).reset();
-    });
     this.clips = new Map();
     for (let clip of clips) {
       this.clips.set(clip.name, clip);

@@ -73,3 +73,35 @@ export async function db_create_user (opts: OptsCreateUser) {
 
   return result;
 }
+
+export interface DBResource {
+  id: string;
+  version: number;
+  url: string;
+}
+
+export async function db_start_resource_map (map: Map<string, string>) {
+  await dbState.db.collection("resources").subscribe<DBResource>("*", (data)=>{
+    let {url, id} = data.record;
+    if (!map.has(url)) map.set(url, id);
+  });
+  let currentResources = await dbState.db.collection("resources").getFullList<DBResource>(32);
+
+  for (let data of currentResources) {
+    let {url, id} = data;
+    if (!map.has(url)) map.set(url, id);
+  }
+}
+
+export async function db_end_resource_map () {
+  dbState.db.collection("resources").unsubscribe();
+}
+
+export async function db_update_resource_version (id: string) {
+  let {version} = await dbState.db.collection("resources").getOne<DBResource>(id);
+  version ++;
+
+  dbState.db.collection("resources").update<DBResource>(id, {
+    version
+  });
+}
