@@ -158,7 +158,7 @@ async function populate_room() {
 
     dbState.db.collection("penguins").subscribe<DBPenguin>(occupant.id, (data) => update_penguin(createdPenguin, data.record));
 
-    update_penguin(createdPenguin, await dbState.db.collection("penguins").getOne<DBPenguin>(occupant.id), true);
+    // update_penguin(createdPenguin, await dbState.db.collection("penguins").getOne<DBPenguin>(occupant.id), true);
   }
 
 }
@@ -257,6 +257,11 @@ async function render_loop() {
       for (let hoverable of hoverables) {
         let item = hoverable.data.deref() as Object3D;
 
+        if (item["isDisposed"]) {
+          Interact.remove("hover", hoverable);
+          continue;
+        }
+
         let intersect = raycast_mouse_single(evt, item);
         if (intersect !== null) hoverable.callback("hover", item, intersect);
       }
@@ -264,8 +269,17 @@ async function render_loop() {
     .on("click", async (evt) => {
       let clickables = Interact.get<Object3D, Intersection>("click");
 
+      console.log("Clickables", clickables.size);
+
       for (let clickable of clickables) {
         let item = clickable.data.deref() as Object3D;
+
+        if (item["isDisposed"]) {
+          Interact.remove("click", clickable);
+          continue;
+        }
+
+        // console.log("clickable", item);
 
         let intersect = raycast_mouse_single(evt, item);
         if (intersect !== null) {

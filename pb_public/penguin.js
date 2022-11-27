@@ -1,27 +1,31 @@
 import { Vector3 } from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { Anim } from "./anim.js";
+import { dbState } from "./db.js";
+import { ModelResource } from "./resource.js";
 import { findChildByName, sceneGetAllMaterials } from "./utils.js";
-let loader = new GLTFLoader();
 export class Penguin {
-  static getGltf() {
-    return new Promise(async function (_resolve, _reject) {
+  /*static gltf: GLTF;
+  static getGltf (): Promise<GLTF> {
+    return new Promise(async (_resolve, _reject)=>{
       if (Penguin.gltf) {
         _resolve(Penguin.gltf);
         return;
       }
-      let result = await loader.loadAsync("./models/penguin.glb");
+        let result = await loader.loadAsync("./models/penguin.glb");
       _resolve(result);
       return;
     });
-  }
+  }*/
+
   static async create(dbp) {
     let result = new Penguin();
-    result.gltf = await Penguin.getGltf();
+    if (!Penguin.resource) {
+      Penguin.resource = await dbState.db.collection("resources").getFirstListItem("name=\"penguin\"");
+      console.log("Penguin Resource", Penguin.resource);
+    }
+    result.res = new ModelResource(Penguin.resource);
+    await result.res.waitForLoad();
 
-    // yarrify_gltf(result.gltf, {});
-
-    result.anim = Anim.fromGLTF(result.gltf);
+    // result.anim = Anim.fromGLTF(result.gltf);
     result.anim.getAction("wave").timeScale = 4;
     result.anim.getAction("waddle").timeScale = 4;
     let materials = sceneGetAllMaterials(result.gltf.scene);
@@ -29,8 +33,14 @@ export class Penguin {
     result.setColorHex(dbp.color);
     result.name = dbp.name;
     result.id = dbp.id;
-    result.setState(dbp.state);
+    result.setTarget(dbp.state.x, dbp.state.y, dbp.state.z, dbp.state.rx, dbp.state.ry, dbp.state.rz, true);
     return result;
+  }
+  get gltf() {
+    return this.res.gltf;
+  }
+  get anim() {
+    return this.res.anim;
   }
   get rotation() {
     return this.gltf.scene.rotation;
@@ -95,5 +105,4 @@ export class Penguin {
       rz: this.rotation.z
     };
   }
-  setState(state) {}
 }

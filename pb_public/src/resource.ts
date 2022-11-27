@@ -21,7 +21,7 @@ export class Resource {
 
   constructor(dbEntry: DBResource) {
     this.dbEntry = dbEntry;
-    if (Resource.all.has(dbEntry.id)) throw `Duplicate resource id ${dbEntry.id}`;
+    if (Resource.all.has(dbEntry.id)) return;//throw `Duplicate resource id ${dbEntry.id}`;
     Resource.all.set(dbEntry.id, this);
   }
 }
@@ -99,6 +99,10 @@ export const Interact = {
 
     return list;
   },
+  remove<T> (type: string, item: InteractItem<T,any>) {
+    let list = Interact.store.get(type) as Set<InteractItem<T, any>>;
+    list.delete(item);
+  },
   add<T extends Object, V>(type: string, callback: InteractCallback<T, V>, data: T) {
     Interact.get(type).add({
       callback,
@@ -118,6 +122,10 @@ export const Interact = {
 //   },
 //   data: {} as any
 // })
+
+export interface Resolver<T> {
+  (value: T | PromiseLike<T>): void;
+}
 
 export class ModelResource extends Resource implements Object3DProvider {
   gltf: GLTF;
@@ -206,6 +214,22 @@ export class ModelResource extends Resource implements Object3DProvider {
       
       //dispose of the old stuff
       this.gltf.scene.removeFromParent();
+      
+      this.gltf.scene.traverse((obj)=>{
+        obj["isDisposed"] = true;
+        obj.userData = null;
+        console.log("disposing of object", obj.name, obj["isDisposed"]);
+        let m = obj as Mesh;
+        let mat:MeshBasicMaterial;
+        if (m.isMesh) {
+          mat = m.material as MeshBasicMaterial;
+          if (m.geometry.dispose) m.geometry.dispose();
+          if (mat.map && mat.map.dispose) mat.map.dispose();
+          if (mat.dispose) mat.dispose();
+
+        }
+      });
+      
       this.gltf = null;
     }
 
@@ -302,5 +326,32 @@ export class ModelResource extends Resource implements Object3DProvider {
 
     //notify any children to reattach to new resource as they were with the old one
     if (this.changeListeners) for (let cb of this.changeListeners) cb(this);
+
+    if (this.isLoaded) {
+      this.waitForLoadEnd();
+    }
+  }
+
+  waitForLoadCallbacks: Set<Resolver<void>>;
+  get isLoaded (): boolean {
+    return this.gltf !== undefined && this.gltf !== null;
+  }
+  private waitForLoadEnd () {
+    if (!this.waitForLoadCallbacks) return;
+    for (let resolve of this.waitForLoadCallbacks) {
+      resolve();
+    }
+    this.waitForLoadCallbacks.clear();
+    this.waitForLoadCallbacks = null;
+  }
+  waitForLoad (): Promise<void> {
+    if(!this.waitForLoadCallbacks) this.waitForLoadCallbacks = new Set();
+
+    return new Promise(async (_resolve, _reject)=>{
+      this.waitForLoadCallbacks.add(_resolve);
+      if (this.isLoaded) {
+        this.waitForLoadEnd();
+      }
+    });
   }
 }

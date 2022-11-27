@@ -124,9 +124,11 @@ async function populate_room() {
     createdPenguin.setLocal(false);
     addPenguin(createdPenguin);
     dbState.db.collection("penguins").subscribe(occupant.id, data => update_penguin(createdPenguin, data.record));
-    update_penguin(createdPenguin, await dbState.db.collection("penguins").getOne(occupant.id), true);
+
+    // update_penguin(createdPenguin, await dbState.db.collection("penguins").getOne<DBPenguin>(occupant.id), true);
   }
 }
+
 async function display_room() {
   let scene = state.sceneProvider.getObject();
   let resources = await db_get_room_resources(state.currentRoom);
@@ -193,13 +195,23 @@ async function render_loop() {
     let hoverables = Interact.get("hover");
     for (let hoverable of hoverables) {
       let item = hoverable.data.deref();
+      if (item["isDisposed"]) {
+        Interact.remove("hover", hoverable);
+        continue;
+      }
       let intersect = raycast_mouse_single(evt, item);
       if (intersect !== null) hoverable.callback("hover", item, intersect);
     }
   }).on("click", async evt => {
     let clickables = Interact.get("click");
+    console.log("Clickables", clickables.size);
     for (let clickable of clickables) {
       let item = clickable.data.deref();
+      if (item["isDisposed"]) {
+        Interact.remove("click", clickable);
+        continue;
+      }
+      console.log("clickable", item);
       let intersect = raycast_mouse_single(evt, item);
       if (intersect !== null) {
         clickable.callback("click", item, intersect);

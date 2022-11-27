@@ -11,7 +11,7 @@ export class Resource {
   }
   constructor(dbEntry) {
     this.dbEntry = dbEntry;
-    if (Resource.all.has(dbEntry.id)) throw `Duplicate resource id ${dbEntry.id}`;
+    if (Resource.all.has(dbEntry.id)) return; //throw `Duplicate resource id ${dbEntry.id}`;
     Resource.all.set(dbEntry.id, this);
   }
 }
@@ -48,6 +48,10 @@ export const Interact = {
       }
     }
     return list;
+  },
+  remove(type, item) {
+    let list = Interact.store.get(type);
+    list.delete(item);
   },
   add(type, callback, data) {
     Interact.get(type).add({
@@ -140,6 +144,19 @@ export class ModelResource extends Resource {
 
       //dispose of the old stuff
       this.gltf.scene.removeFromParent();
+      this.gltf.scene.traverse(obj => {
+        obj["isDisposed"] = true;
+        obj.userData = null;
+        console.log("disposing of object", obj.name, obj["isDisposed"]);
+        let m = obj;
+        let mat;
+        if (m.isMesh) {
+          mat = m.material;
+          if (m.geometry.dispose) m.geometry.dispose();
+          if (mat.map && mat.map.dispose) mat.map.dispose();
+          if (mat.dispose) mat.dispose();
+        }
+      });
       this.gltf = null;
     }
 
@@ -220,5 +237,29 @@ export class ModelResource extends Resource {
 
     //notify any children to reattach to new resource as they were with the old one
     if (this.changeListeners) for (let cb of this.changeListeners) cb(this);
+    if (this.isLoaded) {
+      this.waitForLoadEnd();
+    }
+  }
+  get isLoaded() {
+    return this.gltf !== undefined && this.gltf !== null;
+  }
+  waitForLoadEnd() {
+    if (!this.waitForLoadCallbacks) return;
+    for (let resolve of this.waitForLoadCallbacks) {
+      resolve();
+    }
+    this.waitForLoadCallbacks.clear();
+    this.waitForLoadCallbacks = null;
+  }
+  waitForLoad() {
+    var _this = this;
+    if (!this.waitForLoadCallbacks) this.waitForLoadCallbacks = new Set();
+    return new Promise(async function (_resolve, _reject) {
+      _this.waitForLoadCallbacks.add(_resolve);
+      if (_this.isLoaded) {
+        _this.waitForLoadEnd();
+      }
+    });
   }
 }

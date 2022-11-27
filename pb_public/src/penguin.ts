@@ -2,36 +2,40 @@
 import { Color, Euler, MeshToonMaterial, Vector3 } from "three";
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Anim } from "./anim.js";
-import { DBPenguin, PenguinState } from "./db.js";
+import { DBPenguin, DBResource, dbState, PenguinState } from "./db.js";
+import { ModelResource } from "./resource.js";
 import { findChildByName, sceneGetAllMaterials } from "./utils.js";
 
-let loader = new GLTFLoader();
-
 export class Penguin {
-
-  static gltf: GLTF;
+  static resource: DBResource;
+  /*static gltf: GLTF;
   static getGltf (): Promise<GLTF> {
     return new Promise(async (_resolve, _reject)=>{
       if (Penguin.gltf) {
         _resolve(Penguin.gltf);
         return;
       }
+
       let result = await loader.loadAsync("./models/penguin.glb");
       _resolve(result);
       return;
     });
-  }
+  }*/
+
+  res: ModelResource;
 
   static async create (dbp: DBPenguin) {
     let result = new Penguin();
 
+    if (!Penguin.resource) {
+      Penguin.resource = await dbState.db.collection("resources").getFirstListItem("name=\"penguin\"");
+      console.log("Penguin Resource", Penguin.resource);
+    }
+
+    result.res = new ModelResource(Penguin.resource);
+    await result.res.waitForLoad();
     
-
-    result.gltf = await Penguin.getGltf();
-
-    // yarrify_gltf(result.gltf, {});
-
-    result.anim = Anim.fromGLTF(result.gltf);
+    // result.anim = Anim.fromGLTF(result.gltf);
     result.anim.getAction("wave").timeScale = 4;
     result.anim.getAction("waddle").timeScale = 4;
     
@@ -41,14 +45,24 @@ export class Penguin {
     result.setColorHex(dbp.color);
     result.name = dbp.name;
     result.id = dbp.id;
-    result.setState(dbp.state);
     
+    result.setTarget(
+      dbp.state.x,dbp.state.y,dbp.state.z,
+      dbp.state.rx,dbp.state.ry,dbp.state.rz,
+      true
+    );
+
     return result;
   }
 
   walkSpeed: number;
-  gltf: GLTF;
-  anim: Anim;
+  get gltf(): GLTF {
+    return this.res.gltf;
+  }
+  get anim(): Anim {
+    return this.res.anim;
+  }
+
   name: string;
   id: string;
   room: string;
@@ -137,8 +151,5 @@ export class Penguin {
       ry: this.rotation.y,
       rz: this.rotation.z
     };
-  }
-  setState (state: PenguinState) {
-
   }
 }
