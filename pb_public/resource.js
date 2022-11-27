@@ -58,6 +58,11 @@ export const Interact = {
       callback,
       data: new WeakRef(data)
     });
+  },
+  clear() {
+    for (let [k, v] of Interact.store) {
+      v.clear();
+    }
   }
 };
 
@@ -119,7 +124,8 @@ export class ModelResource extends Resource {
 
   //1
   unmount() {
-    if (this.parentProvider) {
+    console.log("unmounted");
+    if (this.parentProvider !== null && this.parentProvider !== undefined) {
       this.parentProvider.deafen(this.onParentChange);
     }
     this.parentProvider = null;
@@ -181,7 +187,9 @@ export class ModelResource extends Resource {
       //correct lights
       if (obj["isLight"]) {
         lgt = obj;
-        lgt.intensity /= 1000;
+        if (!lgt["isDirectionalLight"]) {
+          lgt.intensity /= 1000;
+        }
       }
       let objUserDataJson = obj.userData;
       let objUserData = obj.userData;
@@ -201,6 +209,12 @@ export class ModelResource extends Resource {
       if (minigame !== undefined) {
         Interact.add("click", (type, item) => {
           console.log("Play minigame", minigame);
+        }, obj);
+      }
+      let gotoRoom = objUserDataJson["goto-room"];
+      if (gotoRoom !== undefined) {
+        Interact.add("click", async function (type, item) {
+          if (state.switchRoom) state.switchRoom(gotoRoom);
         }, obj);
       }
       if (obj.name === "ground-clickable") {

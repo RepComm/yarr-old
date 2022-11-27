@@ -43,7 +43,9 @@ export interface State {
   canvas?: HTMLCanvasElement;
 
   sceneProvider?: Object3DProvider;
-  resources?: Map<RelationId<DBResource>, Resource>;
+  // resources?: Map<RelationId<DBResource>, Resource>;
+
+  switchRoom?: (name: string) => void;
 
   camera?: PerspectiveCamera;
   trackedPenguins?: Map<string, Penguin>;

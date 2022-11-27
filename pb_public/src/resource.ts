@@ -2,7 +2,7 @@
 import { AnimationAction, Intersection, Light, LoopPingPong, Material, Mesh, MeshBasicMaterial, MeshToonMaterial, Object3D } from "three";
 import { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Anim } from "./anim.js";
-import { DBResource, dbState, RelationId } from "./db.js";
+import { DBResource, dbState, db_get_room, RelationId } from "./db.js";
 import { state } from "./state.js";
 // import { state } from "./state.js";
 import { gltf_load, gltf_parse } from "./utils.js";
@@ -12,9 +12,9 @@ export type ResourceMap = Map<RelationId<DBResource>, Resource>;
 export class Resource {
   static _all: ResourceMap;
 
-  static get all (): ResourceMap {
+  static get all(): ResourceMap {
     if (!Resource._all) Resource._all = new Map();
-    return Resource._all;  
+    return Resource._all;
   }
 
   dbEntry: DBResource;
@@ -38,7 +38,7 @@ export interface Object3DProvider {
 
 export class StaticObject3DProvider implements Object3DProvider {
   obj: Object3D;
-  constructor (obj: Object3D) {
+  constructor(obj: Object3D) {
     this.obj = obj;
   }
   getObject(): Object3D {
@@ -69,7 +69,7 @@ export interface MatYarrUserDataJson {
   invis?: string;
 }
 
-export interface InteractCallback<T,V> {
+export interface InteractCallback<T, V> {
   (type: string, item: T, extra?: V): void;
 }
 export interface InteractItem<T extends Object, V> {
@@ -79,8 +79,8 @@ export interface InteractItem<T extends Object, V> {
 export const Interact = {
   store: new Map<string, Set<InteractItem<any, any>>>(),
 
-  get<T,V>(type: string) {
-    let list = Interact.store.get(type) as Set<InteractItem<T,V>>;
+  get<T, V>(type: string) {
+    let list = Interact.store.get(type) as Set<InteractItem<T, V>>;
 
     if (!list) {
       list = new Set();
@@ -99,7 +99,7 @@ export const Interact = {
 
     return list;
   },
-  remove<T> (type: string, item: InteractItem<T,any>) {
+  remove<T>(type: string, item: InteractItem<T, any>) {
     let list = Interact.store.get(type) as Set<InteractItem<T, any>>;
     list.delete(item);
   },
@@ -108,6 +108,11 @@ export const Interact = {
       callback,
       data: new WeakRef(data)
     });
+  },
+  clear () {
+    for (let [k, v] of Interact.store) {
+      v.clear();
+    }
   }
 };
 
@@ -132,7 +137,7 @@ export class ModelResource extends Resource implements Object3DProvider {
   anim: Anim;
 
   cameraMountPoint: Object3D;
-  
+
   getObject() {
     return this.gltf.scene;
   }
@@ -159,7 +164,7 @@ export class ModelResource extends Resource implements Object3DProvider {
     };
 
     //1
-    dbState.db.collection("resources").subscribe<DBResource>(dbEntry.id, (data)=>{
+    dbState.db.collection("resources").subscribe<DBResource>(dbEntry.id, (data) => {
       console.log("detected change, reloading resource", dbEntry.id);
       this.dbEntry = data.record;
       this.update();
@@ -185,7 +190,8 @@ export class ModelResource extends Resource implements Object3DProvider {
 
   //1
   unmount(): this {
-    if (this.parentProvider) {
+    console.log("unmounted");
+    if (this.parentProvider !== null && this.parentProvider !== undefined) {
       this.parentProvider.deafen(this.onParentChange);
     }
 
@@ -203,7 +209,7 @@ export class ModelResource extends Resource implements Object3DProvider {
 
     let gltf = await state.gltfLoader.loadAsync(this.dbEntry.url);
 
-    
+
     //if we have a previous version of this resource
     if (this.gltf) {
       //keep transformations of old resource
@@ -211,16 +217,16 @@ export class ModelResource extends Resource implements Object3DProvider {
 
       //get rid of references to hover/click objects
       this.cameraMountPoint = null;
-      
+
       //dispose of the old stuff
       this.gltf.scene.removeFromParent();
-      
-      this.gltf.scene.traverse((obj)=>{
+
+      this.gltf.scene.traverse((obj) => {
         obj["isDisposed"] = true;
         obj.userData = null;
         console.log("disposing of object", obj.name, obj["isDisposed"]);
         let m = obj as Mesh;
-        let mat:MeshBasicMaterial;
+        let mat: MeshBasicMaterial;
         if (m.isMesh) {
           mat = m.material as MeshBasicMaterial;
           if (m.geometry.dispose) m.geometry.dispose();
@@ -229,7 +235,7 @@ export class ModelResource extends Resource implements Object3DProvider {
 
         }
       });
-      
+
       this.gltf = null;
     }
 
@@ -240,23 +246,25 @@ export class ModelResource extends Resource implements Object3DProvider {
     let lgt: Light;
     let mesh: Mesh;
     let mat: MeshBasicMaterial;
-    
+
     //update the animation mixer for the new resource
     if (!this.anim) this.anim = new Anim();
     this.anim.config(gltf.scene, gltf.animations);
 
-    this.gltf.scene.traverse((obj)=>{
+    this.gltf.scene.traverse((obj) => {
       //get cameraMountPoint
       if (obj.name === "cameraMountPoint") {
         this.cameraMountPoint = obj;
         this.cameraMountPoint.getWorldPosition(state.camera.position);
         this.cameraMountPoint.getWorldQuaternion(state.camera.quaternion);
       }
-      
+
       //correct lights
-      if ( obj["isLight"] ) {
+      if (obj["isLight"]) {
         lgt = obj as Light;
-        lgt.intensity /= 1000;
+        if (!lgt["isDirectionalLight"]) {
+          lgt.intensity /= 1000;
+        }
       }
 
       let objUserDataJson: ObjYarrUserDataJson = obj.userData;
@@ -266,42 +274,49 @@ export class ModelResource extends Resource implements Object3DProvider {
       let hoverAnimLoop = objUserDataJson["hover-anim-loop"];
 
       if (hoverAnim !== undefined) {
-        let action = this.anim.getAction(hoverAnim)||undefined;
+        let action = this.anim.getAction(hoverAnim) || undefined;
         objUserData["hover-anim"] = action;
         if (action) {
-          Interact.add<Object3D, Intersection>("hover", (type, item, intersection)=>{
+          Interact.add<Object3D, Intersection>("hover", (type, item, intersection) => {
             action.reset().play();
           }, obj);
-          action.setLoop(LoopPingPong, hoverAnimLoop||1);
+          action.setLoop(LoopPingPong, hoverAnimLoop || 1);
         }
       }
-  
+
       let minigame = objUserDataJson["goto-minigame"];
       if (minigame !== undefined) {
-        Interact.add("click", (type, item)=>{
+        Interact.add("click", (type, item) => {
           console.log("Play minigame", minigame);
+        }, obj);
+      }
+
+      let gotoRoom = objUserDataJson["goto-room"];
+      if (gotoRoom !== undefined) {
+        Interact.add("click", async (type, item) => {
+          if (state.switchRoom) state.switchRoom(gotoRoom);
         }, obj);
       }
 
       if (obj.name === "ground-clickable") {
         // out.groundClickable = obj;
-        Interact.add("click", (type, item)=>{
-          
+        Interact.add("click", (type, item) => {
+
         }, obj);
       }
-  
+
       if (obj["isMesh"]) {
         mesh = obj as Mesh;
         mat = mesh.material as MeshBasicMaterial;
-        
+
         let userData: MatYarrUserDataJson = mat.userData;
 
         if (userData.invis == "true") {
           mat.visible = false;
         }
-  
+
         if (mat.type !== "MeshToonMaterial" && userData.toon !== "false") {
-  
+
           let nextMaterial = materialNames.get(mat.name);
           if (!nextMaterial) {
             nextMaterial = new MeshToonMaterial({
@@ -312,13 +327,13 @@ export class ModelResource extends Resource implements Object3DProvider {
             });
             materialNames.set(nextMaterial.name, nextMaterial);
           }
-  
+
           mesh.material = nextMaterial;
         }
       }
-  
+
     });
-    
+
     //if we're supposed to be mountd to a parent, do that again
     if (this.parentProvider) {
       this.parentProvider.getObject().add(this.gltf.scene);
@@ -333,10 +348,10 @@ export class ModelResource extends Resource implements Object3DProvider {
   }
 
   waitForLoadCallbacks: Set<Resolver<void>>;
-  get isLoaded (): boolean {
+  get isLoaded(): boolean {
     return this.gltf !== undefined && this.gltf !== null;
   }
-  private waitForLoadEnd () {
+  private waitForLoadEnd() {
     if (!this.waitForLoadCallbacks) return;
     for (let resolve of this.waitForLoadCallbacks) {
       resolve();
@@ -344,10 +359,10 @@ export class ModelResource extends Resource implements Object3DProvider {
     this.waitForLoadCallbacks.clear();
     this.waitForLoadCallbacks = null;
   }
-  waitForLoad (): Promise<void> {
-    if(!this.waitForLoadCallbacks) this.waitForLoadCallbacks = new Set();
+  waitForLoad(): Promise<void> {
+    if (!this.waitForLoadCallbacks) this.waitForLoadCallbacks = new Set();
 
-    return new Promise(async (_resolve, _reject)=>{
+    return new Promise(async (_resolve, _reject) => {
       this.waitForLoadCallbacks.add(_resolve);
       if (this.isLoaded) {
         this.waitForLoadEnd();

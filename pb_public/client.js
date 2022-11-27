@@ -3,10 +3,10 @@ import { Cache, PerspectiveCamera, Raycaster, Scene, Vector2, WebGLRenderer } fr
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DEG2RAD } from "three/src/math/MathUtils.js";
 import { Anim } from "./anim.js";
-import { dbState, db_deafen_rooms, db_get_penguins, db_get_room_resources, db_join_room, db_listen_room, db_list_rooms } from "./db.js";
+import { dbState, db_deafen_rooms, db_get_penguins, db_get_room, db_get_room_resources, db_join_room, db_listen_room, db_list_rooms } from "./db.js";
 import { Debounce } from "./debounce.js";
 import { Penguin } from "./penguin.js";
-import { Interact, ModelResource, StaticObject3DProvider } from "./resource.js";
+import { Interact, ModelResource, Resource, StaticObject3DProvider } from "./resource.js";
 import { state } from "./state.js";
 export async function getNetworkTime() {
   let result = 0;
@@ -118,8 +118,7 @@ async function populate_room() {
   }
   let toAddData = await db_get_penguins(toAddIds);
   for (let occupant of toAddData) {
-    // if (occupant.id === state.localPenguin.id) continue;
-
+    if (occupant.id === state.localPenguin.id) continue;
     let createdPenguin = await Penguin.create(occupant);
     createdPenguin.setLocal(false);
     addPenguin(createdPenguin);
@@ -146,6 +145,16 @@ async function display_room() {
 }
 async function switch_room(room) {
   await db_deafen_rooms();
+  if (state.currentRoom) {
+    for (let resId of state.currentRoom.resources) {
+      let res = Resource.all.get(resId);
+      Resource.all.delete(resId);
+      console.log("unmount res", res);
+      if (res) {
+        res.unmount();
+      }
+    }
+  }
   state.currentRoom = room;
   await db_listen_room(room, data => {
     Object.assign(state.currentRoom, data.record);
@@ -159,6 +168,16 @@ async function init_room() {
   let randomRoomIndex = 0; //Math.floor((Math.random() * rooms.length * 10) % rooms.length);
   let randomRoom = rooms[randomRoomIndex];
   switch_room(randomRoom);
+  state.switchRoom = async name => {
+    if (name === state.currentRoom.name) {
+      console.log("already in room", name);
+      return;
+    }
+    Interact.clear();
+    console.log("switch room", name);
+    let room = await db_get_room(name);
+    switch_room(room);
+  };
 }
 async function init_time() {
   state.serverInitTime = await getNetworkTime();
@@ -211,7 +230,9 @@ async function render_loop() {
         Interact.remove("click", clickable);
         continue;
       }
-      console.log("clickable", item);
+
+      // console.log("clickable", item);
+
       let intersect = raycast_mouse_single(evt, item);
       if (intersect !== null) {
         clickable.callback("click", item, intersect);
